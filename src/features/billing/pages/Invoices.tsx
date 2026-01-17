@@ -9,7 +9,7 @@ import { useLanguage } from '@/shared/context/LanguageContext';
 import { useAuthStore } from '@/features/auth/stores/authStore';
 import { cn } from '@/shared/lib/utils';
 import { jsPDF } from 'jspdf';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@/core/services/supabase';
 import { format } from 'date-fns';
 
 export function Invoices() {
