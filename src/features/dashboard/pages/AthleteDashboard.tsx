@@ -79,16 +79,27 @@ export function AthleteDashboard() {
     useEffect(() => {
         const fetchHealthData = async () => {
             if (!userId) return;
-            const { data, error } = await supabase
-                .from('health_data')
-                .select('*')
-                .eq('athlete_id', userId)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .single();
+            try {
+                const { data, error } = await supabase
+                    .from('health_data')
+                    .select('*')
+                    .eq('athlete_id', userId)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .single();
 
-            if (data) {
-                setRecoveryData(data);
+                if (error) {
+                    if (error.code !== 'PGRST116') { // PGRST116 is 'no rows'
+                        logger.warn('Health data fetch error:', error.message);
+                    }
+                    return;
+                }
+
+                if (data) {
+                    setRecoveryData(data);
+                }
+            } catch (err) {
+                logger.error('Unexpected error fetching health data:', err);
             }
         };
         fetchHealthData();

@@ -25,9 +25,11 @@ import { StepProBusiness } from '@/features/onboarding/components/steps/StepProB
 export function Onboarding() {
     const navigate = useNavigate();
     const { t } = useLanguage();
-    const { currentUser, updateProfile, register } = useAuthStore();
+    const { currentUser, updateProfile, register, getInvitation } = useAuthStore();
     const [step, setStep] = useState(1);
     const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
+    const [isInvited, setIsInvited] = useState(false);
+    const [invitationData, setInvitationData] = useState<any>(null);
 
     const [formData, setFormData] = useState({
         // Step 1: Account
@@ -73,6 +75,30 @@ export function Onboarding() {
         address: '', // pro
         zip: '', // pro
     });
+
+    React.useEffect(() => {
+        const checkInvitation = async () => {
+            const params = new URLSearchParams(window.location.search);
+            const inviteId = params.get('invite');
+
+            if (inviteId) {
+                const { data, error } = await getInvitation(inviteId);
+                if (data) {
+                    setIsInvited(true);
+                    setInvitationData(data);
+                    setFormData(prev => ({
+                        ...prev,
+                        email: data.email,
+                        role: 'athlete', // Most invitations are for athletes
+                        primarySport: data.sport?.toLowerCase() || prev.primarySport,
+                        goalDetail: data.objective || prev.goalDetail,
+                        // Suggested Plan could be stored in metadata or profile_data later
+                    }));
+                }
+            }
+        };
+        checkInvitation();
+    }, [getInvitation]);
 
     const [errors, setErrors] = useState({});
 
@@ -275,7 +301,15 @@ export function Onboarding() {
 
                     {React.useMemo(() => (
                         <>
-                            {step === 1 && <StepAccount formData={formData} setFormData={setFormData} errors={errors} />}
+                            {step === 1 && (
+                                <StepAccount
+                                    formData={formData}
+                                    setFormData={setFormData}
+                                    errors={errors}
+                                    isInvited={isInvited}
+                                    invitationData={invitationData}
+                                />
+                            )}
                             {step === 2 && <StepPersonal formData={formData} setFormData={setFormData} errors={errors} />}
                             {step === 3 && (
                                 formData.role === 'pro'

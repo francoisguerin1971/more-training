@@ -7,9 +7,11 @@ interface StepAccountProps {
     formData: any;
     setFormData: (data: any) => void;
     errors: any;
+    isInvited?: boolean;
+    invitationData?: any;
 }
 
-export function StepAccount({ formData, setFormData, errors }: StepAccountProps) {
+export function StepAccount({ formData, setFormData, errors, isInvited, invitationData }: StepAccountProps) {
     const { t } = useLanguage();
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -30,14 +32,26 @@ export function StepAccount({ formData, setFormData, errors }: StepAccountProps)
                             name="email"
                             value={formData.email}
                             onChange={handleChange}
+                            disabled={isInvited}
                             placeholder="athlete@example.com"
                             className={cn(
                                 "w-full bg-slate-950/50 border rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none transition-all font-medium",
-                                errors.email ? "border-rose-500/50 focus:border-rose-500" : "border-slate-800 focus:border-emerald-500"
+                                errors.email ? "border-rose-500/50 focus:border-rose-500" : "border-slate-800 focus:border-emerald-500",
+                                isInvited && "opacity-50 cursor-not-allowed bg-slate-900 border-emerald-500/30"
                             )}
                         />
+                        {isInvited && (
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                                <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">Invited</span>
+                            </div>
+                        )}
                     </div>
                     {errors.email && <p className="text-[10px] text-rose-500 font-bold uppercase ml-2">{errors.email}</p>}
+                    {isInvited && invitationData?.coach && (
+                        <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-widest ml-2">
+                            {t('invited_by')} {invitationData.coach.full_name || invitationData.coach.pseudo}
+                        </p>
+                    )}
                 </div>
 
                 <div className="space-y-2">
@@ -111,12 +125,13 @@ export function StepAccount({ formData, setFormData, errors }: StepAccountProps)
                 <div className="grid grid-cols-2 gap-4">
                     <button
                         type="button"
-                        onClick={() => setFormData((prev: any) => ({ ...prev, role: 'athlete' }))}
+                        onClick={() => !isInvited && setFormData((prev: any) => ({ ...prev, role: 'athlete' }))}
                         className={cn(
                             "flex flex-col items-center gap-4 p-6 rounded-[32px] border-2 transition-all duration-300",
                             formData.role === 'athlete'
                                 ? "bg-emerald-500/10 border-emerald-500 shadow-xl shadow-emerald-500/10"
-                                : "bg-slate-950/50 border-slate-800 hover:border-slate-700"
+                                : "bg-slate-950/50 border-slate-800 hover:border-slate-700",
+                            isInvited && formData.role !== 'athlete' && "opacity-30 grayscale cursor-not-allowed"
                         )}
                     >
                         <UserCircle size={32} className={formData.role === 'athlete' ? "text-emerald-400" : "text-slate-500"} />
@@ -130,12 +145,13 @@ export function StepAccount({ formData, setFormData, errors }: StepAccountProps)
 
                     <button
                         type="button"
-                        onClick={() => setFormData((prev: any) => ({ ...prev, role: 'pro' }))}
+                        onClick={() => !isInvited && setFormData((prev: any) => ({ ...prev, role: 'pro' }))}
                         className={cn(
                             "flex flex-col items-center gap-4 p-6 rounded-[32px] border-2 transition-all duration-300",
                             formData.role === 'pro'
                                 ? "bg-indigo-500/10 border-indigo-500 shadow-xl shadow-indigo-500/10"
-                                : "bg-slate-950/50 border-slate-800 hover:border-slate-700"
+                                : "bg-slate-950/50 border-slate-800 hover:border-slate-700",
+                            isInvited && formData.role !== 'pro' && "opacity-30 grayscale cursor-not-allowed"
                         )}
                     >
                         <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center text-slate-950 font-black text-xs">P</div>

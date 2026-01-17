@@ -12,7 +12,7 @@ interface AuthActions {
     updateProfile: (updates: Partial<UserProfile>) => Promise<{ data: any; error: any }>;
     getAthletesForCoach: (coachId: string) => Promise<any[]>;
     getCoachesForAthlete: (athleteId: string) => Promise<any[]>;
-    inviteAthlete: (email: string) => Promise<{ data: any; error: any }>;
+    inviteAthlete: (invite: { email: string; name?: string; sport?: string; suggestedPlan?: string }) => Promise<{ data: any; error: any }>;
     deleteAccount: (userId: string) => Promise<void>;
     uploadAvatar: (file: File) => Promise<{ path: string; error: any }>;
     // MFA Actions
@@ -21,6 +21,7 @@ interface AuthActions {
     unenrollMFA: (factorId: string) => Promise<{ data: any; error: any }>;
     listMFAFactors: () => Promise<{ data: any; error: any }>;
     challengeMFA: (factorId: string) => Promise<{ data: any; error: any }>;
+    getInvitation: (inviteId: string) => Promise<{ data: any; error: any }>;
 }
 
 export type AuthStore = AuthState & AuthActions;
@@ -197,16 +198,24 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
                 return [];
             }
 
-            return (data as any[])?.map(rel => ({
-                id: rel.athlete.id,
-                name: rel.athlete.first_name && rel.athlete.last_name
-                    ? `${rel.athlete.first_name} ${rel.athlete.last_name}`
-                    : (rel.athlete.full_name || rel.athlete.pseudo || 'Athlete'),
-                avatar: (rel.athlete.first_name?.[0] || rel.athlete.full_name?.[0] || 'A'),
-                profile: rel.athlete.profile_data || {},
-                relationshipStatus: rel.status,
-                plan: rel.subscription_plan
-            })) || [];
+            return (data as any[])?.map(rel => {
+                const athlete = rel.athlete;
+                return {
+                    id: athlete.id,
+                    first_name: athlete.first_name,
+                    last_name: athlete.last_name,
+                    pseudo: athlete.pseudo,
+                    full_name: athlete.full_name,
+                    email: athlete.email,
+                    name: athlete.first_name && athlete.last_name
+                        ? `${athlete.first_name} ${athlete.last_name}`
+                        : (athlete.full_name || athlete.pseudo || 'Athlete'),
+                    avatar: (athlete.first_name?.[0] || athlete.full_name?.[0] || 'A'),
+                    profile: athlete.profile_data || {},
+                    relationshipStatus: rel.status,
+                    plan: rel.subscription_plan
+                };
+            }) || [];
         } catch (err: any) {
             logger.error('Exception fetching athletes:', err);
             return [];
@@ -260,11 +269,30 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
             return [];
         }
     },
-    inviteAthlete: async (email: string): Promise<{ data: any; error: any }> => {
+    inviteAthlete: async (invite: { email: string; name?: string; sport?: string; suggestedPlan?: string }): Promise<{ data: any; error: any }> => {
+        const { currentUser } = get();
+        if (!currentUser) return { data: null, error: 'No user' };
+
         try {
-            // Placeholder: in a real app, this would send an email or create an invitation record
-            console.log(`Inviting athlete: ${email}`);
-            return { data: { success: true }, error: null };
+            const { data, error } = await supabase
+                .from('invitations')
+                .insert([{
+                    coach_id: currentUser.id,
+                    email: invite.email,
+                    name: invite.name,
+                    sport: invite.sport,
+                    suggested_plan: invite.suggestedPlan
+                }])
+                .select()
+                .single();
+
+            if (error) {
+                logger.error('Error creating invitation:', error);
+                return { data: null, error };
+            }
+
+            logger.info(`Invited athlete: ${invite.email}`);
+            return { data, error: null };
         } catch (err: any) {
             logger.error('Exception inviting athlete:', err);
             return { data: null, error: err };
@@ -400,6 +428,33 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
             if (error) logger.error('MFA challenge error:', error);
             return { data, error };
         } catch (err: any) {
+            return { data: null, error: err };
+        }
+    },
+    getInvitation: async (inviteId: string) => {
+        try {
+            const { data, error } = await supabase
+                .from('invitations')
+                .select(`
+                    *,
+                    coach:coach_id (
+                        full_name,
+                        first_name,
+                        last_name,
+                        pseudo
+                    )
+                `)
+                .eq('id', inviteId)
+                .single();
+
+            if (error) {
+                logger.error('Error fetching invitation:', error);
+                return { data: null, error };
+            }
+
+            return { data, error: null };
+        } catch (err: any) {
+            logger.error('Exception fetching invitation:', err);
             return { data: null, error: err };
         }
     }

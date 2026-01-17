@@ -14,6 +14,7 @@ import { useTraining } from '@/features/planner/contexts/TrainingContext';
 import { supabase } from '@/core/services/supabase';
 import { logger } from '@/core/utils/security';
 import { cn } from '@/core/utils/cn';
+import { format, formatDistanceToNow, formatDistance } from 'date-fns';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { CoachTechnicalForm } from '@/features/dashboard/components/CoachTechnicalForm';
 import { UserProfile } from '@/features/auth/types';
@@ -43,6 +44,8 @@ export function CoachDashboard() {
     const [revenue, setRevenue] = useState(0);
     const [compliance, setCompliance] = useState(0);
     const [pendingReviews, setPendingReviews] = useState(0);
+    const [missedWorkouts, setMissedWorkouts] = useState<any[]>([]);
+    const [meetings, setMeetings] = useState<any[]>([]);
 
     useEffect(() => {
         const loadDashboardData = async () => {
@@ -54,40 +57,69 @@ export function CoachDashboard() {
                     const athletesData = await getAthletesForCoach(coachId);
                     setAthletes(athletesData || []);
 
-                    // Calculate revenue (last 30 days)
-                    if (coachId) {
-                        // Corrected version: You cannot use rpc result directly in .eq()
-                        // First get the subscription IDs
-                        const { data: subIds } = await supabase.rpc('get_coach_subscriptions', { coach_id: coachId });
+                    // 2. Calculate Revenue (last 30 days)
+                    const { data: payments } = await supabase
+                        .from('payments')
+                        .select('coach_payout_cents')
+                        .gte('paid_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+                        .eq('status', 'SUCCEEDED');
 
-                        if (subIds && subIds.length > 0) {
-                            const { data: payments } = await supabase
-                                .from('payments')
-                                .select('coach_payout_cents')
-                                .in('subscription_id', subIds)
-                                .gte('paid_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-                                .eq('status', 'SUCCEEDED');
+                    const totalRevenue = payments?.reduce((sum, p) => sum + (p.coach_payout_cents || 0), 0) || 0;
+                    setRevenue(totalRevenue / 100);
 
-                            const totalRevenue = payments?.reduce((sum, p) => sum + (p.coach_payout_cents || 0), 0) || 0;
-                            setRevenue(totalRevenue / 100);
-                        }
+                    // 3. Calculate Compliance (last 7 days)
+                    const { data: sessions } = await supabase
+                        .from('training_sessions')
+                        .select('status, session_data, athlete_id, title, scheduled_date')
+                        .gte('scheduled_date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
 
-                        // Calculate compliance (sessions completed vs planned)
-                        const { data: sessions } = await supabase
-                            .from('training_sessions')
-                            .select('status, session_data')
-                            .in('athlete_id', athletesData.map(a => a.id))
-                            .gte('scheduled_date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+                    if (sessions && athletesData.length > 0) {
+                        const athleteIds = athletesData.map(a => a.id);
+                        const relevantSessions = sessions.filter(s => athleteIds.includes(s.athlete_id));
 
-                        if (sessions) {
-                            const completed = sessions.filter(s => s.status === 'COMPLETED').length || 0;
-                            const total = sessions.length || 1;
-                            setCompliance(Math.round((completed / total) * 100));
+                        const completed = relevantSessions.filter(s => s.status === 'COMPLETED').length;
+                        const total = relevantSessions.length || 1;
+                        setCompliance(Math.round((completed / total) * 100));
 
-                            // Count pending reviews (sessions completed but not reviewed)
-                            const pending = sessions.filter(s => s.status === 'COMPLETED' && !s.session_data?.reviewed).length || 0;
-                            setPendingReviews(pending);
-                        }
+                        const pending = relevantSessions.filter(s => s.status === 'COMPLETED' && !s.session_data?.reviewed).length;
+                        setPendingReviews(pending);
+
+                        // Missed Workouts Alert
+                        const missed = relevantSessions
+                            .filter(s => (s.status === 'SKIPPED' || (s.status === 'PLANNED' && new Date(s.scheduled_date) < new Date())))
+                            .map(s => {
+                                const athlete = athletesData.find(a => a.id === s.athlete_id);
+                                return {
+                                    id: s.id,
+                                    athlete: athlete?.name || 'Unknown',
+                                    workout: s.title,
+                                    daysAgo: formatDistanceToNow(new Date(s.scheduled_date), { addSuffix: true }),
+                                    avatar: athlete?.avatar || 'A'
+                                };
+                            });
+                        setMissedWorkouts(missed.slice(0, 5));
+                    }
+
+                    // 4. Load Meetings
+                    const { data: appointments } = await supabase
+                        .from('appointments')
+                        .select('*')
+                        .eq('coach_id', coachId)
+                        .gte('start_time', new Date().toISOString())
+                        .order('start_time', { ascending: true })
+                        .limit(5);
+
+                    if (appointments) {
+                        setMeetings(appointments.map(a => {
+                            const athlete = athletesData.find(ath => ath.id === a.athlete_id);
+                            return {
+                                id: a.id,
+                                athlete: athlete?.name || 'Athlete',
+                                time: format(new Date(a.start_time), 'HH:mm'),
+                                type: a.title,
+                                duration: formatDistance(new Date(a.start_time), new Date(a.end_time))
+                            };
+                        }));
                     }
                 }
             } catch (err) {
@@ -137,17 +169,6 @@ export function CoachDashboard() {
         },
     ];
 
-    const missedWorkouts = [
-        { id: 1, athlete: 'Emma Wilson', workout: 'Threshold Intervals', daysAgo: '1d ago', avatar: 'E' },
-        { id: 2, athlete: 'Alex Morgan', workout: 'Long Aerobic Run', daysAgo: '3h ago', avatar: 'A' },
-    ];
-
-    const meetings = [
-        { id: 1, athlete: 'Alex Morgan', time: '10:00 AM', type: 'Macro-cycle Review', duration: '30m' },
-        { id: 2, athlete: 'Emma Wilson', time: '02:30 PM', type: 'Injury Follow-up', duration: '15m' },
-        { id: 3, athlete: 'James Miller', time: '04:00 PM', type: 'Season Planning', duration: '45m' },
-    ];
-
     const chartData = [
         { name: 'Mon', load: 45 },
         { name: 'Tue', load: 52 },
@@ -158,23 +179,33 @@ export function CoachDashboard() {
         { name: 'Sun', load: 30 },
     ];
 
-    const handleInviteSubmit = (e: React.FormEvent) => {
+    const handleInviteSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!currentUser?.id) return;
 
-        inviteAthlete(inviteData.email);
-        alert(`Professional invite sent to ${inviteData.email}. Onboarding data pre-filled.`);
-        setShowInviteModal(false);
-        setInviteStep(1);
-        setInviteData({
-            email: '',
-            name: '',
-            sport: '',
-            objective: '',
-            formStatus: 'optimal',
-            suggestedPlan: 'p1',
-            availableDays: [1, 2, 3, 4, 5]
+        const { error } = await inviteAthlete({
+            email: inviteData.email,
+            name: inviteData.name,
+            sport: inviteData.sport,
+            suggestedPlan: inviteData.suggestedPlan
         });
+
+        if (error) {
+            alert('Error sending invitation. Please check the logs.');
+        } else {
+            alert(`Professional invite sent to ${inviteData.email}. Onboarding data pre-filled.`);
+            setShowInviteModal(false);
+            setInviteStep(1);
+            setInviteData({
+                email: '',
+                name: '',
+                sport: '',
+                objective: '',
+                formStatus: 'optimal',
+                suggestedPlan: 'p1',
+                availableDays: [1, 2, 3, 4, 5]
+            });
+        }
     };
 
     return (
@@ -253,7 +284,11 @@ export function CoachDashboard() {
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <button
-                                        onClick={() => setSelectedAthleteForTech({ full_name: m.athlete, email: '' })}
+                                        onClick={() => {
+                                            const athlete = athletes.find(a => a.name === m.athlete);
+                                            if (athlete) setSelectedAthleteForTech(athlete);
+                                            else setSelectedAthleteForTech({ full_name: m.athlete, email: '', id: 'temp', role: 'athlete', status: 'ACTIVE', created_at: '', updated_at: '' } as any);
+                                        }}
                                         className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg text-[8px] font-black uppercase tracking-widest border border-emerald-500/20 transition-all flex items-center gap-2"
                                     >
                                         <Target size={12} /> Assessment
