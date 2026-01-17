@@ -1,0 +1,173 @@
+{
+  "nav": {
+    "home": "Startseite",
+    "explore": "Entdecken",
+    "profile": "Mein Profil",
+    "dashboard": "Dashboard",
+    "login": "Anmelden",
+    "signup": "Registrieren",
+    "logout": "Abmelden",
+    "myVoyages": "Meine Reisen"
+  },
+  "home": {
+    "hero": {
+      "title": "Laufe für dich,",
+      "subtitle": "nicht für die Statistiken.",
+      "description": "Entdecke Cosmic Run, das Ökosystem, in dem Geschwindigkeit keine Rolle spielt. Plane, reise und teile deine Läufe ohne Leistungsdruck.",
+      "cta": "Ausflüge Erkunden",
+      "philosophy": "Unsere Philosophie"
+    },
+    "features": {
+      "title": "Anti-Performance",
+      "subtitle": "Wir haben die Stoppuhren entfernt (fast). Hier feiern wir Regelmäßigkeit, Entdeckung und Begegnungen.",
+      "socialRun": {
+        "title": "Social Trip Running",
+        "description": "Strukturierte Laufreisen, um die Welt oder deine Region zu entdecken. Unterkunft, Strecken und gute Stimmung inklusive."
+      },
+      "agenda": {
+        "title": "Zentralisierte Agenda",
+        "description": "Keine WhatsApp-Gruppen mehr. Finde alle deine Trainings, offiziellen Rennen und sozialen Ausflüge an einem Ort."
+      },
+      "coach": {
+        "title": "Freundlicher Coach",
+        "description": "Trainingspläne, die sich an dein Leben anpassen, nicht umgekehrt. Ziel: sich wohl fühlen, keinen Rekord brechen."
+      }
+    },
+    "cta": {
+      "title": "Tritt der Bewegung bei",
+      "description": "Die App wird gerade gebaut. Melde dich an für privaten Beta-Zugang und erste Reisen.",
+      "emailPlaceholder": "deine@email.com",
+      "subscribe": "Anmelden"
+    },
+    "footer": {
+      "copyright": "© 2025 Cosmic Run. Alle Rechte vorbehalten. Das globale Läufer-Ökosystem."
+    }
+  },
+  "explore": {
+    "title": "Kommende Abfahrten",
+    "description": "Tritt einer Gruppe bei, laufe ohne Druck und entdecke neue Horizonte.",
+    "back": "Zurück",
+    "filters": {
+      "all": "Alle",
+      "socialRun": "Social Run",
+      "trip": "Reise",
+      "thematic": "Thematisch"
+    }
+  },
+  "voyage": {
+    "bookingButton": {
+      "login": "Anmelden um teilzunehmen",
+      "booked": "✅ Du bist dabei!",
+      "full": "❌ Voll",
+      "book": "Ich bin dabei!",
+      "booking": "Buchung läuft..."
+    },
+    "details": {
+      "date": "Datum",
+      "location": "Ort",
+      "duration": "Dauer",
+      "level": "Level",
+      "allLevels": "Alle Level",
+      "about": "Über",
+      "organizedBy": "Organisiert von",
+      "pricePerPerson": "Preis pro Person",
+      "free": "Kostenlos",
+      "cancellation": "Kostenlose Stornierung bis 24h vorher.",
+      "participants": "Teilnehmer"
+    }
+  },
+  "profile": {
+    "greeting": "Hallo {name},",
+    "subtitle": "Bereit für deinen nächsten Lauf?",
+    "upcoming": "🗓️ Deine kommenden Abenteuer",
+    "emptyState": {
+      "title": "Noch kein Rennen geplant?",
+      "description": "Deine Agenda ist leer, aber die Welt ist groß. Finde jetzt deinen nächsten \"Social Run\".",
+      "cta": "Reisen erkunden"
+    },
+    "past": "Erinnerungen (Vergangene)"
+  },
+  "auth": {
+    "login": {
+      "title": "Willkommen zurück!",
+      "subtitle": "Melde dich an, um auf deinen Bereich zuzugreifen.",
+      "email": "Email",
+      "password": "Passwort",
+      "rememberMe": "Angemeldet bleiben",
+      "submit": "Anmelden",
+      "submitting": "Anmeldung läuft...",
+      "noAccount": "Noch kein Konto?",
+      "signupLink": "Registrieren"
+    },
+    "register": {
+      "title": "Tritt der Community bei",
+      "subtitle": "Erstelle dein Konto zum Organisieren oder Teilnehmen.",
+      "fullName": "Vollständiger Name",
+      "email": "Email",
+      "password": "Passwort",
+      "role": "Ich bin...",
+      "runner": "Läufer",
+      "organizer": "Organisator",
+      "submit": "Registrieren",
+      "submitting": "Konto wird erstellt...",
+      "hasAccount": "Schon ein Konto?",
+      "loginLink": "Anmelden"
+    }
+  },
+  "organizer": {
+    "dashboard": {
+      "title": "Dashboard",
+      "subtitle": "Verwalte deine Events und verfolge Anmeldungen.",
+      "newVoyage": "Neue Reise",
+      "stats": {
+        "totalParticipants": "Gesamtregistrierte",
+        "activeVoyages": "Aktive Reisen",
+        "revenue": "Einnahmen (Geschätzt)"
+      },
+      "myVoyages": "Meine Reisen",
+      "emptyState": {
+        "message": "Du hast noch keine Reisen erstellt.",
+        "cta": "Los geht's!"
+      }
+    },
+    "create": {
+      "title": "Event erstellen",
+      "subtitle": "Fülle die Details aus, um eine neue Reise zum Ökosystem hinzuzufügen.",
+      "fields": {
+        "title": "Reisetitel",
+        "titlePlaceholder": "Z.B.: Nächtliche Paris-Überquerung",
+        "description": "Beschreibung",
+        "descriptionPlaceholder": "Beschreibe die Atmosphäre, die Route...",
+        "date": "Datum",
+        "location": "Ort",
+        "locationPlaceholder": "Z.B.: Bordeaux, Frankreich",
+        "type": "Typ",
+        "types": {
+          "socialRun": "Social Run",
+          "thematic": "Thematisch",
+          "tripMultiDay": "Reise (Mehrtägig)"
+        },
+        "duration": "Dauer",
+        "durationPlaceholder": "Z.B.: 2h00",
+        "price": "Preis (€)",
+        "imageUrl": "Bild-URL"
+      },
+      "submit": "Reise Veröffentlichen"
+    },
+    "layout": {
+      "title": "Cosmic Pro",
+      "dashboard": "Dashboard",
+      "createVoyage": "Reise Erstellen",
+      "quitPro": "Pro-Bereich Verlassen"
+    }
+  },
+  "common": {
+    "loading": "Lädt...",
+    "error": "Ein Fehler ist aufgetreten",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "back": "Zurück"
+  }
+}

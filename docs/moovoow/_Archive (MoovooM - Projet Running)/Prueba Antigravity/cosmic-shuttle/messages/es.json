@@ -1,0 +1,173 @@
+{
+    "nav": {
+        "home": "Inicio",
+        "explore": "Explorar",
+        "profile": "Mi Perfil",
+        "dashboard": "Panel",
+        "login": "Iniciar sesión",
+        "signup": "Registrarse",
+        "logout": "Cerrar sesión",
+        "myVoyages": "Mis Viajes"
+    },
+    "home": {
+        "hero": {
+            "title": "Corre por ti,",
+            "subtitle": "no por las estadísticas.",
+            "description": "Descubre Cosmic Run, el ecosistema donde la velocidad no importa. Planifica, viaja y comparte tus carreras sin presión de rendimiento.",
+            "cta": "Explorar Salidas",
+            "philosophy": "Nuestra Filosofía"
+        },
+        "features": {
+            "title": "Anti-Rendimiento",
+            "subtitle": "Hemos eliminado los cronómetros (casi). Aquí celebramos la regularidad, el descubrimiento y los encuentros.",
+            "socialRun": {
+                "title": "Social Trip Running",
+                "description": "Viajes de carrera estructurados para descubrir el mundo o tu región. Alojamiento, rutas y buen ambiente incluidos."
+            },
+            "agenda": {
+                "title": "Agenda Centralizada",
+                "description": "Se acabaron los grupos de WhatsApp. Encuentra todos tus entrenamientos, carreras oficiales y salidas sociales en un solo lugar."
+            },
+            "coach": {
+                "title": "Entrenador Amable",
+                "description": "Planes de entrenamiento que se adaptan a tu vida, no al revés. Objetivo: sentirse bien, no batir un récord."
+            }
+        },
+        "cta": {
+            "title": "Únete al movimiento",
+            "description": "La aplicación está en construcción. Regístrate para acceder a la beta privada y a los primeros viajes.",
+            "emailPlaceholder": "tu@email.com",
+            "subscribe": "Registrarme"
+        },
+        "footer": {
+            "copyright": "© 2025 Cosmic Run. Todos los derechos reservados. El ecosistema global del corredor."
+        }
+    },
+    "explore": {
+        "title": "Próximas Salidas",
+        "description": "Únete a un grupo, corre sin presión y descubre nuevos horizontes.",
+        "back": "Volver",
+        "filters": {
+            "all": "Todo",
+            "socialRun": "Social Run",
+            "trip": "Viaje",
+            "thematic": "Temático"
+        }
+    },
+    "voyage": {
+        "bookingButton": {
+            "login": "Iniciar sesión para participar",
+            "booked": "✅ ¡Estás dentro!",
+            "full": "❌ Completo",
+            "book": "¡Me apunto!",
+            "booking": "Reservando..."
+        },
+        "details": {
+            "date": "Fecha",
+            "location": "Ubicación",
+            "duration": "Duración",
+            "level": "Nivel",
+            "allLevels": "Todos los niveles",
+            "about": "Acerca de",
+            "organizedBy": "Organizado por",
+            "pricePerPerson": "Precio por persona",
+            "free": "Gratis",
+            "cancellation": "Cancelación gratuita hasta 24h antes.",
+            "participants": "participantes"
+        }
+    },
+    "profile": {
+        "greeting": "Hola {name},",
+        "subtitle": "¿Listo para tu próxima salida?",
+        "upcoming": "🗓️ Tus próximas aventuras",
+        "emptyState": {
+            "title": "¿Aún no hay carrera planeada?",
+            "description": "Tu agenda está vacía, pero el mundo es grande. Encuentra tu próxima \"Social Run\" ahora.",
+            "cta": "Explorar viajes"
+        },
+        "past": "Recuerdos (Pasados)"
+    },
+    "auth": {
+        "login": {
+            "title": "¡Bienvenido de nuevo!",
+            "subtitle": "Inicia sesión para acceder a tu espacio.",
+            "email": "Email",
+            "password": "Contraseña",
+            "rememberMe": "Recordarme",
+            "submit": "Iniciar sesión",
+            "submitting": "Iniciando sesión...",
+            "noAccount": "¿No tienes cuenta?",
+            "signupLink": "Registrarse"
+        },
+        "register": {
+            "title": "Únete a la comunidad",
+            "subtitle": "Crea tu cuenta para organizar o participar.",
+            "fullName": "Nombre completo",
+            "email": "Email",
+            "password": "Contraseña",
+            "role": "Soy...",
+            "runner": "Corredor",
+            "organizer": "Organizador",
+            "submit": "Registrarse",
+            "submitting": "Creando cuenta...",
+            "hasAccount": "¿Ya tienes cuenta?",
+            "loginLink": "Iniciar sesión"
+        }
+    },
+    "organizer": {
+        "dashboard": {
+            "title": "Panel",
+            "subtitle": "Gestiona tus eventos y sigue las inscripciones.",
+            "newVoyage": "Nuevo Viaje",
+            "stats": {
+                "totalParticipants": "Total Inscritos",
+                "activeVoyages": "Viajes Activos",
+                "revenue": "Ingresos (Est.)"
+            },
+            "myVoyages": "Mis Viajes",
+            "emptyState": {
+                "message": "Aún no has creado ningún viaje.",
+                "cta": "¡Empieza!"
+            }
+        },
+        "create": {
+            "title": "Crear un evento",
+            "subtitle": "Completa los detalles para agregar un nuevo viaje al ecosistema.",
+            "fields": {
+                "title": "Título del viaje",
+                "titlePlaceholder": "Ej: Travesía Nocturna de París",
+                "description": "Descripción",
+                "descriptionPlaceholder": "Describe el ambiente, la ruta...",
+                "date": "Fecha",
+                "location": "Ubicación",
+                "locationPlaceholder": "Ej: Barcelona, España",
+                "type": "Tipo",
+                "types": {
+                    "socialRun": "Social Run",
+                    "thematic": "Temático",
+                    "tripMultiDay": "Viaje (Multi-días)"
+                },
+                "duration": "Duración",
+                "durationPlaceholder": "Ej: 2h00",
+                "price": "Precio (€)",
+                "imageUrl": "URL de la imagen"
+            },
+            "submit": "Publicar Viaje"
+        },
+        "layout": {
+            "title": "Cosmic Pro",
+            "dashboard": "Panel",
+            "createVoyage": "Crear Viaje",
+            "quitPro": "Salir del espacio Pro"
+        }
+    },
+    "common": {
+        "loading": "Cargando...",
+        "error": "Ha ocurrido un error",
+        "save": "Guardar",
+        "cancel": "Cancelar",
+        "delete": "Eliminar",
+        "edit": "Editar",
+        "back": "Volver"
+    }
+}

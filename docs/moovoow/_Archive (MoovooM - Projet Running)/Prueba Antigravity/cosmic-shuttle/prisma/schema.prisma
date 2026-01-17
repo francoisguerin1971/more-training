@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  role      String   // 'RUNNER', 'PRO', 'ORGANIZER'
+  avatar    String?
+  image     String? // NextAuth default
+  password  String? // For Credentials
+  createdAt DateTime @default(now())
+
+  organizedVoyages Voyage[] @relation("OrganizedVoyages")
+  participations   Booking[]
+}
+
+model Voyage {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  type        String   // 'SOCIAL_RUN', 'TRIP_MULTI_DAY', etc.
+  date        DateTime
+  location    String
+  duration    String
+  distanceKm  Float
+  price       Float
+  imageUrl    String
+  spotsTotal  Int
+  spotsFilled Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  organizerId String
+  organizer   User    @relation("OrganizedVoyages", fields: [organizerId], references: [id])
+  bookings    Booking[]
+}
+
+model Booking {
+  id        String   @id @default(uuid())
+  status    String   // 'CONFIRMED', 'WAITLIST'
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  voyageId  String
+  voyage    Voyage   @relation(fields: [voyageId], references: [id])
+
+  @@unique([userId, voyageId])
+}

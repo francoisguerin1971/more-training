@@ -1,0 +1,30 @@
+Total unique keys: 630
+
+Language: es
+Keys: 601
+Missing: 29
+Missing keys: record_run_5k, record_run_10k, record_cycling_ftp, ftp_desc, no_data_connected, accept_workout, add_event, event_title, event_comment, email_reminder, before, reminder_set, delete_event, start_time, end_time, minutes, edit_event, push_notification, email_notification, notification_type, minutes_before, edit, confirm_changes, reminder, athlete_on_vacation, vacation_approval_needed, workout_suggested, view_all_exercises, duration_with_buffer
+
+Language: en
+Keys: 629
+Missing: 1
+Missing keys: duration_with_buffer
+
+Language: ca
+Keys: 583
+Missing: 47
+Missing keys: kpi_vo2max, kpi_fitness, kpi_fatigue, kpi_form, personal_records, current_vs_best, progress_chart_title, progress_evolution_desc, fitness_level_desc, info_performance_metrics, action_performance_metrics, tempo, weight, technical_notes, sport_football, record_vma, record_sprint, vma_desc, sprint_desc, record_run_5k, record_run_10k, record_cycling_ftp, ftp_desc, no_data_connected, accept_workout, add_event, event_title, event_comment, email_reminder, before, reminder_set, delete_event, start_time, end_time, minutes, edit_event, push_notification, email_notification, notification_type, minutes_before, edit, confirm_changes, reminder, athlete_on_vacation, vacation_approval_needed, workout_suggested, duration_with_buffer
+
+Language: fr
+Keys: 630
+Missing: 0
+
+Language: it
+Keys: 551
+Missing: 79
+Missing keys: kpi_vo2max, kpi_fitness, kpi_fatigue, kpi_form, personal_records, current_vs_best, progress_chart_title, progress_evolution_desc, fitness_level_desc, info_performance_metrics, action_performance_metrics, warmup, cooldown, breathing_sensation, intensity_target, recovery, sets, reps, sketch, speak_easily, heavy_breathing, gasped_for_air, tempo, weight, technical_notes, sport_football, record_vma, record_sprint, vma_desc, sprint_desc, info_macro_cycle, action_macro_cycle, info_weekly_compliance, action_weekly_compliance, info_time_distribution, action_time_distribution, info_today_session, action_today_session, info_upcoming_sessions, info_ecosystem, rpe_curve, planned_curve, actual_curve, forecast, loading_cycle, coach_advice, coach_strategy, pro_tip, insight_coach_title, read_coach_notes, record_run_5k, record_run_10k, record_cycling_ftp, ftp_desc, no_data_connected, accept_workout, add_event, event_title, event_comment, email_reminder, before, reminder_set, delete_event, start_time, end_time, minutes, edit_event, push_notification, email_notification, notification_type, minutes_before, edit, confirm_changes, reminder, athlete_on_vacation, vacation_approval_needed, workout_suggested, view_all_exercises, duration_with_buffer
+
+Language: de
+Keys: 551
+Missing: 79
+Missing keys: kpi_vo2max, kpi_fitness, kpi_fatigue, kpi_form, personal_records, current_vs_best, progress_chart_title, progress_evolution_desc, fitness_level_desc, info_performance_metrics, action_performance_metrics, warmup, cooldown, breathing_sensation, intensity_target, recovery, sets, reps, sketch, speak_easily, heavy_breathing, gasped_for_air, tempo, weight, technical_notes, sport_football, record_vma, record_sprint, vma_desc, sprint_desc, info_macro_cycle, action_macro_cycle, info_weekly_compliance, action_weekly_compliance, info_time_distribution, action_time_distribution, info_today_session, action_today_session, info_upcoming_sessions, info_ecosystem, rpe_curve, planned_curve, actual_curve, forecast, loading_cycle, coach_advice, coach_strategy, pro_tip, insight_coach_title, read_coach_notes, record_run_5k, record_run_10k, record_cycling_ftp, ftp_desc, no_data_connected, accept_workout, add_event, event_title, event_comment, email_reminder, before, reminder_set, delete_event, start_time, end_time, minutes, edit_event, push_notification, email_notification, notification_type, minutes_before, edit, confirm_changes, reminder, athlete_on_vacation, vacation_approval_needed, workout_suggested, view_all_exercises, duration_with_buffer

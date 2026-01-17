@@ -1,0 +1,173 @@
+{
+    "nav": {
+        "home": "Home",
+        "explore": "Explore",
+        "profile": "My Profile",
+        "dashboard": "Dashboard",
+        "login": "Login",
+        "signup": "Sign up",
+        "logout": "Logout",
+        "myVoyages": "My Trips"
+    },
+    "home": {
+        "hero": {
+            "title": "Run for yourself,",
+            "subtitle": "not for the stats.",
+            "description": "Discover Cosmic Run, the ecosystem where speed doesn't matter. Plan, travel, and share your runs without performance pressure.",
+            "cta": "Explore Trips",
+            "philosophy": "Our Philosophy"
+        },
+        "features": {
+            "title": "Anti-Performance",
+            "subtitle": "We removed the stopwatches (almost). Here, we celebrate consistency, discovery and connections.",
+            "socialRun": {
+                "title": "Social Trip Running",
+                "description": "Structured running trips to discover the world or your region. Accommodation, routes and good vibes included."
+            },
+            "agenda": {
+                "title": "Centralized Agenda",
+                "description": "No more WhatsApp groups. Find all your trainings, official races and social outings in one place."
+            },
+            "coach": {
+                "title": "Kind Coach",
+                "description": "Training plans that adapt to your life, not the other way around. Goal: feel good, not break a record."
+            }
+        },
+        "cta": {
+            "title": "Join the movement",
+            "description": "The app is under construction. Sign up for private beta access and first trips.",
+            "emailPlaceholder": "your@email.com",
+            "subscribe": "Sign me up"
+        },
+        "footer": {
+            "copyright": "© 2025 Cosmic Run. All rights reserved. The global runner's ecosystem."
+        }
+    },
+    "explore": {
+        "title": "Upcoming Departures",
+        "description": "Join a group, run without pressure and discover new horizons.",
+        "back": "Back",
+        "filters": {
+            "all": "All",
+            "socialRun": "Social Run",
+            "trip": "Trip",
+            "thematic": "Thematic"
+        }
+    },
+    "voyage": {
+        "bookingButton": {
+            "login": "Login to participate",
+            "booked": "✅ You're in!",
+            "full": "❌ Full",
+            "book": "Join!",
+            "booking": "Booking..."
+        },
+        "details": {
+            "date": "Date",
+            "location": "Location",
+            "duration": "Duration",
+            "level": "Level",
+            "allLevels": "All levels",
+            "about": "About",
+            "organizedBy": "Organized by",
+            "pricePerPerson": "Price per person",
+            "free": "Free",
+            "cancellation": "Free cancellation up to 24h before.",
+            "participants": "participants"
+        }
+    },
+    "profile": {
+        "greeting": "Hello {name},",
+        "subtitle": "Ready for your next run?",
+        "upcoming": "🗓️ Your upcoming adventures",
+        "emptyState": {
+            "title": "No race planned yet?",
+            "description": "Your agenda is empty, but the world is big. Find your next \"Social Run\" now.",
+            "cta": "Explore trips"
+        },
+        "past": "Memories (Past)"
+    },
+    "auth": {
+        "login": {
+            "title": "Welcome back!",
+            "subtitle": "Login to access your space.",
+            "email": "Email",
+            "password": "Password",
+            "rememberMe": "Remember me",
+            "submit": "Login",
+            "submitting": "Logging in...",
+            "noAccount": "No account yet?",
+            "signupLink": "Sign up"
+        },
+        "register": {
+            "title": "Join the community",
+            "subtitle": "Create your account to organize or participate.",
+            "fullName": "Full name",
+            "email": "Email",
+            "password": "Password",
+            "role": "I am...",
+            "runner": "Runner",
+            "organizer": "Organizer",
+            "submit": "Sign up",
+            "submitting": "Creating account...",
+            "hasAccount": "Already have an account?",
+            "loginLink": "Login"
+        }
+    },
+    "organizer": {
+        "dashboard": {
+            "title": "Dashboard",
+            "subtitle": "Manage your events and track registrations.",
+            "newVoyage": "New Trip",
+            "stats": {
+                "totalParticipants": "Total Registered",
+                "activeVoyages": "Active Trips",
+                "revenue": "Revenue (Est.)"
+            },
+            "myVoyages": "My Trips",
+            "emptyState": {
+                "message": "You haven't created any trips yet.",
+                "cta": "Get started!"
+            }
+        },
+        "create": {
+            "title": "Create an event",
+            "subtitle": "Fill in the details to add a new trip to the ecosystem.",
+            "fields": {
+                "title": "Trip title",
+                "titlePlaceholder": "Ex: Paris Night Crossing",
+                "description": "Description",
+                "descriptionPlaceholder": "Describe the vibe, the route...",
+                "date": "Date",
+                "location": "Location",
+                "locationPlaceholder": "Ex: Bordeaux, France",
+                "type": "Type",
+                "types": {
+                    "socialRun": "Social Run",
+                    "thematic": "Thematic",
+                    "tripMultiDay": "Trip (Multi-day)"
+                },
+                "duration": "Duration",
+                "durationPlaceholder": "Ex: 2h00",
+                "price": "Price (€)",
+                "imageUrl": "Image URL"
+            },
+            "submit": "Publish Trip"
+        },
+        "layout": {
+            "title": "Cosmic Pro",
+            "dashboard": "Dashboard",
+            "createVoyage": "Create Trip",
+            "quitPro": "Exit Pro Space"
+        }
+    },
+    "common": {
+        "loading": "Loading...",
+        "error": "An error occurred",
+        "save": "Save",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "edit": "Edit",
+        "back": "Back"
+    }
+}

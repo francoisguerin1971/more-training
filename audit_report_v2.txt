@@ -1,0 +1,49 @@
+Total unique keys in translations.ts: 676
+Total unique keys used in code: 476
+
+--- ES ---
+Keys: 675
+Missing (used in code but not in es): 50
+  Keys: status, date, plan, amount, action, comment, confirm, session_suggested, tomorrow, sport_gym, zone_tempo, tactical_performance, high_intensity, loading, please_log_in, weekly_compliance_desc, compliance, best, ai_bulk_action, new_athlete_btn...
+Duplicate keys in es: 0
+
+--- EN ---
+Keys: 676
+Missing (used in code but not in en): 50
+  Keys: status, date, plan, amount, action, comment, confirm, session_suggested, tomorrow, sport_gym, zone_tempo, tactical_performance, high_intensity, loading, please_log_in, weekly_compliance_desc, compliance, best, ai_bulk_action, new_athlete_btn...
+Duplicate keys in en: 0
+
+--- CA ---
+Keys: 675
+Missing (used in code but not in ca): 50
+  Keys: status, date, plan, amount, action, comment, confirm, session_suggested, tomorrow, sport_gym, zone_tempo, tactical_performance, high_intensity, loading, please_log_in, weekly_compliance_desc, compliance, best, ai_bulk_action, new_athlete_btn...
+Duplicate keys in ca: 0
+
+--- FR ---
+Keys: 675
+Missing (used in code but not in fr): 50
+  Keys: status, date, plan, amount, action, comment, confirm, session_suggested, tomorrow, sport_gym, zone_tempo, tactical_performance, high_intensity, loading, please_log_in, weekly_compliance_desc, compliance, best, ai_bulk_action, new_athlete_btn...
+Duplicate keys in fr: 0
+
+--- IT ---
+Keys: 675
+Missing (used in code but not in it): 50
+  Keys: status, date, plan, amount, action, comment, confirm, session_suggested, tomorrow, sport_gym, zone_tempo, tactical_performance, high_intensity, loading, please_log_in, weekly_compliance_desc, compliance, best, ai_bulk_action, new_athlete_btn...
+Duplicate keys in it: 0
+
+--- DE ---
+Keys: 676
+Missing (used in code but not in de): 50
+  Keys: status, date, plan, amount, action, comment, confirm, session_suggested, tomorrow, sport_gym, zone_tempo, tactical_performance, high_intensity, loading, please_log_in, weekly_compliance_desc, compliance, best, ai_bulk_action, new_athlete_btn...
+Duplicate keys in de: 0
+
+--- Parity Audit (compared to EN) ---
+ES: 1 keys missing compared to EN
+  Keys: es
+CA: 1 keys missing compared to EN
+  Keys: es
+FR: 1 keys missing compared to EN
+  Keys: es
+IT: 1 keys missing compared to EN
+  Keys: es
+DE: 0 keys missing compared to EN
