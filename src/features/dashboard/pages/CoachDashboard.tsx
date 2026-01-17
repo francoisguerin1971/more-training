@@ -70,7 +70,7 @@ export function CoachDashboard() {
                     // 3. Calculate Compliance (last 7 days)
                     const { data: sessions } = await supabase
                         .from('training_sessions')
-                        .select('status, session_data, athlete_id, title, scheduled_date')
+                        .select('id, status, session_data, athlete_id, title, scheduled_date')
                         .gte('scheduled_date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
 
                     if (sessions && athletesData.length > 0) {
@@ -568,8 +568,28 @@ export function CoachDashboard() {
                 <CoachTechnicalForm
                     athlete={selectedAthleteForTech}
                     onClose={() => setSelectedAthleteForTech(null)}
-                    onSave={(data: TechnicalAssessmentData) => {
-                        logger.log('Technical Data Saved:', data);
+                    onSave={async (data: TechnicalAssessmentData) => {
+                        try {
+                            const { error } = await supabase
+                                .from('technical_assessments')
+                                .insert([{
+                                    coach_id: currentUser?.id,
+                                    athlete_id: (selectedAthleteForTech as any).id,
+                                    form_status: data.formStatus,
+                                    fatigue: data.fatigue,
+                                    motivation: data.motivation,
+                                    focus: data.focus
+                                }]);
+
+                            if (error) {
+                                logger.error('Error saving technical assessment:', error);
+                                alert('Failed to save assessment');
+                            } else {
+                                alert('Assessment saved successfully');
+                            }
+                        } catch (err) {
+                            logger.error('Exception saving technical assessment:', err);
+                        }
                     }}
                 />
             )}

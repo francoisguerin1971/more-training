@@ -105,6 +105,52 @@ CREATE INDEX IF NOT EXISTS idx_appointments_coach ON public.appointments(coach_i
 CREATE INDEX IF NOT EXISTS idx_appointments_athlete ON public.appointments(athlete_id);
 CREATE INDEX IF NOT EXISTS idx_invitations_coach ON public.invitations(coach_id);
 CREATE INDEX IF NOT EXISTS idx_invitations_email ON public.invitations(email);
+
+-- Technical Assessments Table
+CREATE TABLE IF NOT EXISTS public.technical_assessments (
+    id BIGSERIAL PRIMARY KEY,
+    coach_id BIGINT REFERENCES public.profiles(id) ON DELETE CASCADE,
+    athlete_id BIGINT REFERENCES public.profiles(id) ON DELETE CASCADE,
+    form_status TEXT NOT NULL,
+    fatigue INTEGER NOT NULL,
+    motivation INTEGER NOT NULL,
+    focus TEXT,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE public.technical_assessments ENABLE ROW LEVEL SECURITY;
+
+-- Policies
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Coaches can manage their assessments') THEN
+        CREATE POLICY "Coaches can manage their assessments" ON public.technical_assessments
+            FOR ALL USING (coach_id IN (SELECT id FROM public.profiles WHERE user_id = auth.uid()));
+    END IF;
+END $$;
+
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Athletes can view their own assessments') THEN
+        CREATE POLICY "Athletes can view their own assessments" ON public.technical_assessments
+            FOR SELECT USING (athlete_id IN (SELECT id FROM public.profiles WHERE user_id = auth.uid()));
+    END IF;
+END $$;
+
+-- Indexing
+CREATE INDEX IF NOT EXISTS idx_tech_coach ON public.technical_assessments(coach_id);
+CREATE INDEX IF NOT EXISTS idx_tech_athlete ON public.technical_assessments(athlete_id);
+
+-- Offerings Type
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'coach_offerings' AND COLUMN_NAME = 'type') THEN
+        ALTER TABLE public.coach_offerings ADD COLUMN type TEXT DEFAULT 'PACKAGE' CHECK (type IN ('PACKAGE', 'HOURLY'));
+    END IF;
+END $$;
 `;
 
 async function runMigration() {

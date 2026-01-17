@@ -22,6 +22,9 @@ interface AuthActions {
     listMFAFactors: () => Promise<{ data: any; error: any }>;
     challengeMFA: (factorId: string) => Promise<{ data: any; error: any }>;
     getInvitation: (inviteId: string) => Promise<{ data: any; error: any }>;
+    getCoachOfferings: (coachId: string) => Promise<any[]>;
+    saveCoachOffering: (offering: any) => Promise<{ data: any; error: any }>;
+    deleteCoachOffering: (offeringId: string) => Promise<{ error: any }>;
 }
 
 export type AuthStore = AuthState & AuthActions;
@@ -456,6 +459,51 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         } catch (err: any) {
             logger.error('Exception fetching invitation:', err);
             return { data: null, error: err };
+        }
+    },
+    getCoachOfferings: async (coachId: string) => {
+        try {
+            const { data, error } = await supabase
+                .from('coach_offerings')
+                .select('*')
+                .eq('coach_id', coachId)
+                .order('created_at', { ascending: true });
+
+            if (error) {
+                logger.error('Error fetching offerings:', error);
+                return [];
+            }
+            return data || [];
+        } catch (err) {
+            logger.error('Exception fetching offerings:', err);
+            return [];
+        }
+    },
+    saveCoachOffering: async (offering: any) => {
+        try {
+            const { data, error } = await supabase
+                .from('coach_offerings')
+                .upsert([offering])
+                .select()
+                .single();
+
+            if (error) logger.error('Error saving offering:', error);
+            return { data, error };
+        } catch (err: any) {
+            return { data: null, error: err };
+        }
+    },
+    deleteCoachOffering: async (offeringId: string) => {
+        try {
+            const { error } = await supabase
+                .from('coach_offerings')
+                .delete()
+                .eq('id', offeringId);
+
+            if (error) logger.error('Error deleting offering:', error);
+            return { error };
+        } catch (err: any) {
+            return { error: err };
         }
     }
 }));
