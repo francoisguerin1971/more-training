@@ -80,6 +80,7 @@ export function StepPersonal({ formData, setFormData, errors }: StepPersonalProp
                             )}
                         />
                     </div>
+                    {errors.city && <p className="text-[10px] text-rose-500 font-bold uppercase ml-2">{errors.city}</p>}
                 </div>
 
                 <div className="space-y-2">
@@ -101,6 +102,7 @@ export function StepPersonal({ formData, setFormData, errors }: StepPersonalProp
                             )}
                         />
                     </div>
+                    {errors.country && <p className="text-[10px] text-rose-500 font-bold uppercase ml-2">{errors.country}</p>}
                 </div>
 
                 <div className="space-y-2">

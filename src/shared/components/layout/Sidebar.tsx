@@ -32,6 +32,7 @@ export function Sidebar({ onLogout }: SidebarProps) {
         { path: '/appointments', label: t('weekly_meetings'), icon: Calendar },
         { path: '/messages', label: t('messages'), icon: MessageSquare, badge: unreadCount },
         { path: '/invoices', label: 'Facturation', icon: FileText },
+        { path: '/resources', label: t('library'), icon: BookOpen },
     ];
 
     const athleteLinks = [

@@ -83,6 +83,9 @@ export function Onboarding() {
             taxId: '', // pro
             address: '', // pro
             zip: '', // pro
+            restingHR: 60,
+            maxHR: 190,
+            medicalConstraints: '',
         };
         return savedData ? JSON.parse(savedData) : defaultData;
     });

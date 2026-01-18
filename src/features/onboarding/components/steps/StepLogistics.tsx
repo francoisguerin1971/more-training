@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLanguage } from '@/shared/context/LanguageContext';
-import { Watch, Package, Clock, MapPin } from 'lucide-react';
+import { Watch, Package, Clock, Activity } from 'lucide-react';
 import { cn } from '@/core/utils/cn';
 
 interface StepLogisticsProps {
@@ -25,6 +25,7 @@ export function StepLogistics({ formData, setFormData, errors }: StepLogisticsPr
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* Equipment Section */}
             <div className="space-y-4">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">
                     {t('available_equipment_label')}
@@ -49,6 +50,7 @@ export function StepLogistics({ formData, setFormData, errors }: StepLogisticsPr
                 </div>
             </div>
 
+            {/* Devices Section */}
             <div className="space-y-4">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">
                     {t('connected_devices_label')}
@@ -75,6 +77,7 @@ export function StepLogistics({ formData, setFormData, errors }: StepLogisticsPr
                 </div>
             </div>
 
+            {/* Availability & Location Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-4">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">
@@ -113,6 +116,49 @@ export function StepLogistics({ formData, setFormData, errors }: StepLogisticsPr
                             </button>
                         ))}
                     </div>
+                </div>
+            </div>
+
+            {/* Health & Biometrics Section */}
+            <div className="p-6 bg-slate-900/30 border border-slate-800 rounded-3xl space-y-6">
+                <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-rose-500/10 rounded-xl text-rose-500">
+                        <Activity size={20} />
+                    </div>
+                    <h3 className="text-xs font-black text-white uppercase tracking-widest">{t('step_health')}</h3>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('resting_heart_rate_label')}</label>
+                        <input
+                            type="number"
+                            placeholder="60"
+                            value={formData.restingHR || ''}
+                            onChange={(e) => setFormData((prev: any) => ({ ...prev, restingHR: parseInt(e.target.value) }))}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-xs font-mono focus:border-rose-500/50 outline-none transition-all"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('max_heart_rate_label')}</label>
+                        <input
+                            type="number"
+                            placeholder="190"
+                            value={formData.maxHR || ''}
+                            onChange={(e) => setFormData((prev: any) => ({ ...prev, maxHR: parseInt(e.target.value) }))}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-xs font-mono focus:border-rose-500/50 outline-none transition-all"
+                        />
+                    </div>
+                </div>
+
+                <div className="space-y-2">
+                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('medical_constraints_label')}</label>
+                    <textarea
+                        placeholder={t('medical_placeholder')}
+                        value={formData.medicalConstraints || ''}
+                        onChange={(e) => setFormData((prev: any) => ({ ...prev, medicalConstraints: e.target.value }))}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-4 text-white text-xs font-medium h-24 resize-none focus:border-rose-500/50 outline-none transition-all"
+                    />
                 </div>
             </div>
         </div>

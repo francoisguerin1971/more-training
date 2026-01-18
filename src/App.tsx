@@ -72,14 +72,16 @@ function App() {
       <TrainingProvider>
         <Suspense fallback={<PageLoading />}>
           <Routes>
+            {/* Common Onboarding - Stable across auth states */}
+            <Route path="/onboarding" element={<Onboarding />} />
+
             {/* Public Routes */}
             {!currentUser ? (
               <>
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/login" element={<Login onLogin={(e: string, p: string) => useAuthStore.getState().login(e, p)} />} />
                 <Route path="/marketplace" element={<CoachMarketplace onSelectCoach={() => { }} onBackToLanding={() => { }} />} />
-                <Route path="/onboarding" element={<Onboarding />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
+                <Route path="*" element={<Navigate to="/onboarding" replace />} />
               </>
             ) : (
               /* Protected Routes */
@@ -95,7 +97,6 @@ function App() {
                 } />
                 <Route path="/messages" element={<Messages />} />
                 <Route path="/settings" element={<AccountSettings />} />
-                <Route path="/onboarding" element={<Onboarding />} />
 
                 {/* Pro Specific */}
                 {currentUser.role === 'pro' && (
@@ -114,7 +115,6 @@ function App() {
                 <Route path="/appointments" element={<Appointments />} />
                 <Route path="/billing" element={<AthleteBilling />} />
                 <Route path="/resources" element={<ResourcesLibrary />} />
-                <Route path="/settings" element={<AccountSettings />} />
 
                 {/* Redirect dashboard by default */}
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />

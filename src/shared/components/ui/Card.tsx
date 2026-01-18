@@ -6,7 +6,7 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export function Card({ children, className, ...props }: CardProps) {
     return (
-        <div className={cn("glass-panel rounded-xl p-6", className)} {...props}>
+        <div className={cn("glass-panel rounded-xl p-6 overflow-visible", className)} {...props}>
             {children}
         </div>
     );

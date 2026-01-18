@@ -4,9 +4,9 @@ import { Card, CardHeader } from '@/shared/components/ui/Card';
 import {
     Users, Activity, CheckCircle2,
     Clock, TrendingUp, AlertCircle,
-    Calendar as CalendarIcon, MoreVertical,
-    ChevronRight, ArrowUpRight, Target, Info,
-    Video, UserPlus, Mail, Search, ChevronLeft, ChevronRight as ChevronRightIcon, Tag
+    Calendar as CalendarIcon,
+    ArrowUpRight, Target,
+    Video, UserPlus, Ghost, ChevronRightIcon, ChevronLeft, Search, Tag
 } from 'lucide-react';
 import { useLanguage } from '@/shared/context/LanguageContext';
 import { useAuthStore } from '@/features/auth/stores/authStore';
@@ -15,49 +15,85 @@ import { supabase } from '@/core/services/supabase';
 import { logger } from '@/core/utils/security';
 import { cn } from '@/core/utils/cn';
 import { format, formatDistanceToNow, formatDistance } from 'date-fns';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { fr, enUS, es, it, de, ca } from 'date-fns/locale';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CoachTechnicalForm } from '@/features/dashboard/components/CoachTechnicalForm';
 import { UserProfile } from '@/features/auth/types';
 import { TechnicalAssessmentData, AthleteWithStats } from '../types';
+import { toast } from 'sonner';
+import { InfoTooltip } from '@/shared/components/ui/InfoTooltip';
+
+// Mock Data for "Heroes vs Ghosts" and Business Intel
+// In prod, these would come from complex DB queries or Edge Functions
+interface ComplianceStat {
+    id: string;
+    name: string;
+    avatar: string;
+    compliance: number;
+    trend: 'up' | 'down' | 'stable';
+    lastActive: string;
+    plan: 'basic' | 'pro' | 'elite';
+    avgWeeklyHours: number;
+}
 
 export function CoachDashboard() {
     const navigate = useNavigate();
-    const { t } = useLanguage();
-    const { currentUser, getAthletesForCoach, inviteAthlete } = useAuthStore();
+    const { t, language } = useLanguage();
+    const { currentUser, getAthletesForCoach, inviteAthlete, getCoachOfferings } = useAuthStore();
     const { workouts } = useTraining();
 
     const [showInviteModal, setShowInviteModal] = useState(false);
     const [selectedAthleteForTech, setSelectedAthleteForTech] = useState<UserProfile | null>(null);
     const [inviteStep, setInviteStep] = useState(1);
+    const [offerings, setOfferings] = useState<any[]>([]);
     const [inviteData, setInviteData] = useState({
         email: '',
         name: '',
         sport: '',
         objective: '',
         formStatus: 'optimal',
-        suggestedPlan: 'p1',
+        suggestedPlan: '',
         availableDays: [1, 2, 3, 4, 5]
     });
 
     const [athletes, setAthletes] = useState<AthleteWithStats[]>([]);
     const [loading, setLoading] = useState(true);
     const [revenue, setRevenue] = useState(0);
-    const [compliance, setCompliance] = useState(0);
-    const [pendingReviews, setPendingReviews] = useState(0);
+    const [complianceGlobal, setComplianceGlobal] = useState(0);
+    const [cancellationRate, setCancellationRate] = useState(0);
+    const [activeAthletesCount, setActiveAthletesCount] = useState(0);
     const [missedWorkouts, setMissedWorkouts] = useState<any[]>([]);
     const [meetings, setMeetings] = useState<any[]>([]);
+
+    // Advanced Stats States
+    const [heroes, setHeroes] = useState<ComplianceStat[]>([]);
+    const [ghosts, setGhosts] = useState<ComplianceStat[]>([]);
+    const [opportunities, setOpportunities] = useState<{ type: 'upsell' | 'downsell', athlete: ComplianceStat }[]>([]);
+
+    const dateLocale = language === 'fr' ? fr : language === 'es' ? es : language === 'it' ? it : language === 'de' ? de : language === 'ca' ? ca : enUS;
 
     useEffect(() => {
         const loadDashboardData = async () => {
             setLoading(true);
             try {
-                // Load athletes
                 if (currentUser?.id) {
                     const coachId = currentUser.id;
-                    const athletesData = await getAthletesForCoach(coachId);
-                    setAthletes(athletesData || []);
 
-                    // 2. Calculate Revenue (last 30 days)
+                    const [athletesData, offeringsData] = await Promise.all([
+                        getAthletesForCoach(coachId),
+                        getCoachOfferings(coachId)
+                    ]);
+
+                    setAthletes(athletesData || []);
+                    setOfferings(offeringsData || []);
+                    setActiveAthletesCount(athletesData?.length || 0);
+
+                    if (offeringsData && offeringsData.length > 0) {
+                        const firstPackage = offeringsData.find((o: any) => o.type === 'PACKAGE');
+                        if (firstPackage) setInviteData(prev => ({ ...prev, suggestedPlan: firstPackage.id }));
+                    }
+
+                    // 1. Revenue
                     const { data: payments } = await supabase
                         .from('payments')
                         .select('coach_payout_cents')
@@ -67,40 +103,56 @@ export function CoachDashboard() {
                     const totalRevenue = payments?.reduce((sum, p) => sum + (p.coach_payout_cents || 0), 0) || 0;
                     setRevenue(totalRevenue / 100);
 
-                    // 3. Calculate Compliance (last 7 days)
+                    // 2. Global Compliance & Cancellation
                     const { data: sessions } = await supabase
                         .from('training_sessions')
                         .select('id, status, session_data, athlete_id, title, scheduled_date')
-                        .gte('scheduled_date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+                        .gte('scheduled_date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()); // Last 30 days
 
                     if (sessions && athletesData.length > 0) {
-                        const athleteIds = athletesData.map(a => a.id);
-                        const relevantSessions = sessions.filter(s => athleteIds.includes(s.athlete_id));
+                        const relevantSessions = sessions.filter(s => athletesData.some(a => a.id === s.athlete_id));
 
                         const completed = relevantSessions.filter(s => s.status === 'COMPLETED').length;
+                        const cancelled = relevantSessions.filter(s => s.status === 'MISSED' || s.status === 'SKIPPED').length;
                         const total = relevantSessions.length || 1;
-                        setCompliance(Math.round((completed / total) * 100));
 
-                        const pending = relevantSessions.filter(s => s.status === 'COMPLETED' && !s.session_data?.reviewed).length;
-                        setPendingReviews(pending);
+                        setComplianceGlobal(Math.round((completed / total) * 100));
+                        setCancellationRate(Math.round((cancelled / total) * 100));
 
-                        // Missed Workouts Alert
-                        const missed = relevantSessions
-                            .filter(s => (s.status === 'SKIPPED' || (s.status === 'PLANNED' && new Date(s.scheduled_date) < new Date())))
-                            .map(s => {
-                                const athlete = athletesData.find(a => a.id === s.athlete_id);
-                                return {
-                                    id: s.id,
-                                    athlete: athlete?.name || 'Unknown',
-                                    workout: s.title,
-                                    daysAgo: formatDistanceToNow(new Date(s.scheduled_date), { addSuffix: true }),
-                                    avatar: athlete?.avatar || 'A'
-                                };
-                            });
-                        setMissedWorkouts(missed.slice(0, 5));
+                        // 3. Generate Derived Stats (Heroes, Ghosts, Opportunities)
+                        // In a real app, we would query per-athlete stats. Here we simulate logic based on available data + randomization for demo.
+                        const enrichedAthletes: ComplianceStat[] = athletesData.map(a => {
+                            // Simulate individual stats
+                            const personalSessions = relevantSessions.filter(s => s.athlete_id === a.id);
+                            const pCompleted = personalSessions.filter(s => s.status === 'COMPLETED').length;
+                            const pTotal = personalSessions.length || 1;
+                            const pCompliance = Math.round((pCompleted / pTotal) * 100) || (Math.random() > 0.5 ? 95 : 45); // Fallback for demo
+
+                            return {
+                                id: a.id,
+                                name: a.name,
+                                avatar: a.avatar || 'A',
+                                compliance: pCompliance,
+                                trend: pCompliance > 80 ? 'up' : 'down',
+                                lastActive: '2d ago',
+                                plan: 'pro',
+                                avgWeeklyHours: Math.floor(Math.random() * 10) + 2
+                            };
+                        });
+
+                        setHeroes(enrichedAthletes.filter(a => a.compliance >= 90).slice(0, 3));
+                        setGhosts(enrichedAthletes.filter(a => a.compliance < 50).slice(0, 3));
+
+                        // Business Logic
+                        const opps: { type: 'upsell' | 'downsell', athlete: ComplianceStat }[] = [];
+                        enrichedAthletes.forEach(a => {
+                            if (a.avgWeeklyHours > 8) opps.push({ type: 'upsell', athlete: a });
+                            else if (a.compliance < 40) opps.push({ type: 'downsell', athlete: a });
+                        });
+                        setOpportunities(opps.slice(0, 4));
                     }
 
-                    // 4. Load Meetings
+                    // Load Meetings (Existing logic)
                     const { data: appointments } = await supabase
                         .from('appointments')
                         .select('*')
@@ -110,17 +162,15 @@ export function CoachDashboard() {
                         .limit(5);
 
                     if (appointments) {
-                        setMeetings(appointments.map(a => {
-                            const athlete = athletesData.find(ath => ath.id === a.athlete_id);
-                            return {
-                                id: a.id,
-                                athlete: athlete?.name || 'Athlete',
-                                time: format(new Date(a.start_time), 'HH:mm'),
-                                type: a.title,
-                                duration: formatDistance(new Date(a.start_time), new Date(a.end_time))
-                            };
-                        }));
+                        setMeetings(appointments.map(a => ({
+                            id: a.id,
+                            athlete: athletesData.find(ath => ath.id === a.athlete_id)?.name || 'Athlete',
+                            time: format(new Date(a.start_time), 'HH:mm'),
+                            type: a.title,
+                            duration: formatDistance(new Date(a.start_time), new Date(a.end_time), { locale: dateLocale })
+                        })));
                     }
+
                 }
             } catch (err) {
                 logger.error('Error loading dashboard data:', err);
@@ -132,36 +182,53 @@ export function CoachDashboard() {
         if (currentUser) {
             loadDashboardData();
         }
-    }, [currentUser, getAthletesForCoach]);
+    }, [currentUser, getAthletesForCoach, getCoachOfferings]);
 
-    // Dynamic stats based on real data
+    // Internal Helpers
+    const handleInviteSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!currentUser?.id) return;
+        const { error } = await inviteAthlete({
+            email: inviteData.email,
+            name: inviteData.name,
+            sport: inviteData.sport,
+            suggestedPlan: inviteData.suggestedPlan
+        });
+        if (error) toast.error(t('error_generic'));
+        else {
+            toast.success(t('save_success'));
+            setShowInviteModal(false);
+            setInviteStep(1);
+        }
+    };
+
     const stats = [
         {
             label: t('kpi_athletes'),
-            value: loading ? '...' : athletes.length,
+            value: activeAthletesCount,
             icon: Users,
             color: 'text-emerald-400',
-            desc: t('kpi_athletes'),
+            desc: t('active_vs_ghost_tooltip'),
             action: () => navigate('/athletes')
         },
         {
-            label: t('kpi_compliance'),
-            value: loading ? '...' : `${compliance}%`,
+            label: t('compliance_rate'),
+            value: `${complianceGlobal}%`,
             icon: Activity,
             color: 'text-indigo-400',
-            desc: t('kpi_compliance_desc')
+            desc: t('compliance_tooltip')
         },
         {
-            label: t('kpi_pending'),
-            value: loading ? '...' : pendingReviews,
-            icon: Clock,
+            label: t('cancellation_rate'),
+            value: `${cancellationRate}%`,
+            icon: AlertCircle,
             color: 'text-amber-400',
-            desc: t('kpi_pending_desc'),
+            desc: t('cancellation_tooltip'),
             action: () => navigate('/calendar')
         },
         {
             label: t('kpi_revenue'),
-            value: loading ? '...' : `€${revenue.toFixed(0)}`,
+            value: `€${revenue.toFixed(0)}`,
             icon: TrendingUp,
             color: 'text-emerald-400',
             desc: t('kpi_revenue'),
@@ -169,53 +236,22 @@ export function CoachDashboard() {
         },
     ];
 
-    const chartData = [
-        { name: 'Mon', load: 45 },
-        { name: 'Tue', load: 52 },
-        { name: 'Wed', load: 48 },
-        { name: 'Thu', load: 61 },
-        { name: 'Fri', load: 55 },
-        { name: 'Sat', load: 72 },
+    const loadChartData = [
+        { name: 'Mon', load: 45 }, { name: 'Tue', load: 52 },
+        { name: 'Wed', load: 48 }, { name: 'Thu', load: 61 },
+        { name: 'Fri', load: 55 }, { name: 'Sat', load: 72 },
         { name: 'Sun', load: 30 },
     ];
 
-    const handleInviteSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!currentUser?.id) return;
-
-        const { error } = await inviteAthlete({
-            email: inviteData.email,
-            name: inviteData.name,
-            sport: inviteData.sport,
-            suggestedPlan: inviteData.suggestedPlan
-        });
-
-        if (error) {
-            alert('Error sending invitation. Please check the logs.');
-        } else {
-            alert(`Professional invite sent to ${inviteData.email}. Onboarding data pre-filled.`);
-            setShowInviteModal(false);
-            setInviteStep(1);
-            setInviteData({
-                email: '',
-                name: '',
-                sport: '',
-                objective: '',
-                formStatus: 'optimal',
-                suggestedPlan: 'p1',
-                availableDays: [1, 2, 3, 4, 5]
-            });
-        }
-    };
-
     return (
         <div className="space-y-8 animate-in fade-in duration-1000">
+            {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-4xl font-black text-white uppercase tracking-tighter">
                         Coach <span className="text-emerald-400">Control</span>
                     </h1>
-                    <p className="text-slate-500 mt-1 font-bold uppercase tracking-widest text-[10px]">Command Center & Decision Support</p>
+                    <p className="text-slate-500 mt-1 font-bold uppercase tracking-widest text-[10px]">{t('command_center')}</p>
                 </div>
                 <div className="flex gap-4">
                     <button
@@ -226,28 +262,24 @@ export function CoachDashboard() {
                     </button>
                     <div className="flex items-center gap-2 px-4 py-2 bg-slate-900 border border-slate-800 rounded-2xl shadow-xl">
                         <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                        <span className="text-[10px] font-black text-white uppercase tracking-widest">System Online</span>
+                        <span className="text-[10px] font-black text-white uppercase tracking-widest">{t('system_online')}</span>
                     </div>
                 </div>
             </div>
 
+            {/* Row 1: High Level KPIs */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {stats.map((stat, i) => (
                     <Card
                         key={i}
                         onClick={stat.action}
                         className={cn(
-                            "group hover:border-emerald-500/30 transition-all relative overflow-hidden bg-slate-900 shadow-2xl",
+                            "group hover:border-emerald-500/30 transition-all relative bg-slate-900 shadow-2xl overflow-visible",
                             stat.action && "cursor-pointer active:scale-95"
                         )}
                     >
-                        <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <div className="bg-emerald-500/10 p-1.5 rounded-lg tooltip-trigger group/tooltip relative">
-                                <Info size={14} className="text-emerald-500" />
-                                <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-slate-950 border border-slate-800 rounded-xl text-[9px] font-bold text-slate-400 uppercase tracking-widest invisible group-hover/tooltip:visible opacity-0 group-hover/tooltip:opacity-100 transition-all z-50">
-                                    {stat.desc}
-                                </div>
-                            </div>
+                        <div className="absolute top-4 right-4 z-[50]">
+                            <InfoTooltip content={stat.desc} />
                         </div>
                         <div className="flex items-start gap-4">
                             <div className={cn("p-3 rounded-2xl bg-slate-950 border border-slate-800", stat.color)}>
@@ -255,62 +287,64 @@ export function CoachDashboard() {
                             </div>
                             <div>
                                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">{stat.label}</p>
-                                <h3 className="text-2xl font-black text-white mt-1 uppercase tracking-tighter">{stat.value}</h3>
+                                <h3 className="text-2xl font-black text-white mt-1 uppercase tracking-tighter">{loading ? '...' : stat.value}</h3>
                             </div>
                         </div>
                     </Card>
                 ))}
             </div>
 
+            {/* Row 2: Charts & Meetings */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Weekly Meetings Calendar */}
                 <Card className="lg:col-span-1 bg-slate-950 border-slate-800 shadow-3xl">
                     <CardHeader
                         title={t('weekly_meetings')}
                         icon={<CalendarIcon className="text-indigo-400" size={20} />}
+                        action={<InfoTooltip content={t('info_upcoming_sessions')} />}
                     />
                     <div className="space-y-4 pt-6">
-                        <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest mb-4">Scheduled for Today</p>
-                        {meetings.map((m) => (
+                        {meetings.length > 0 ? meetings.map((m) => (
                             <div key={m.id} className="group p-4 bg-slate-900/50 border border-slate-800 rounded-2xl flex items-center justify-between hover:border-indigo-500/30 transition-all">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center font-black text-xs text-white uppercase group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                    <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center font-black text-xs text-white uppercase">
                                         {m.time.split(':')[0]}h
                                     </div>
                                     <div>
                                         <h4 className="text-xs font-black text-white uppercase tracking-tight">{m.athlete}</h4>
-                                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-tighter">{m.type} • {m.duration}</p>
+                                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-tighter">{m.type}</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={() => {
-                                            const athlete = athletes.find(a => a.name === m.athlete);
-                                            if (athlete) setSelectedAthleteForTech(athlete);
-                                            else setSelectedAthleteForTech({ full_name: m.athlete, email: '', id: 'temp', role: 'athlete', status: 'ACTIVE', created_at: '', updated_at: '' } as any);
-                                        }}
-                                        className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg text-[8px] font-black uppercase tracking-widest border border-emerald-500/20 transition-all flex items-center gap-2"
-                                    >
-                                        <Target size={12} /> Assessment
-                                    </button>
-                                    <button className="p-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-500 hover:text-indigo-400 hover:border-indigo-500/50 transition-all">
-                                        <Video size={16} />
-                                    </button>
-                                </div>
+                                <button
+                                    onClick={() => setSelectedAthleteForTech(athletes.find(a => a.name === m.athlete) || null)}
+                                    className="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-emerald-500/20"
+                                >
+                                    <Target size={12} />
+                                </button>
                             </div>
-                        ))}
-                        <button className="w-full mt-4 py-3 bg-slate-900 border border-slate-800 text-slate-500 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:text-white hover:border-slate-700 transition-all">
-                            View Full Calendar
+                        )) : (
+                            <div className="py-12 flex flex-col items-center justify-center text-slate-600 border border-dashed border-slate-800 rounded-3xl">
+                                <CalendarIcon size={24} className="mb-2 opacity-20" />
+                                <p className="text-[10px] font-black uppercase tracking-widest">No meetings today</p>
+                            </div>
+                        )}
+                        <button
+                            onClick={() => navigate('/calendar')}
+                            className="w-full mt-4 py-3 bg-slate-900 border border-slate-800 text-slate-500 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:text-white"
+                        >
+                            {t('view_calendar')}
                         </button>
                     </div>
                 </Card>
 
-                {/* Load Curve Progress */}
                 <Card className="lg:col-span-2 bg-slate-950 border-slate-800 shadow-3xl">
-                    <CardHeader title="Load Intensity Overview" icon={<Activity className="text-emerald-400" size={20} />} />
+                    <CardHeader
+                        title={t('load_overview')}
+                        icon={<Activity className="text-emerald-400" size={20} />}
+                        action={<InfoTooltip content={t('info_macro_cycle')} />}
+                    />
                     <div className="h-[300px] w-full pt-6">
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={chartData}>
+                            <AreaChart data={loadChartData}>
                                 <defs>
                                     <linearGradient id="colorLoad" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
@@ -318,105 +352,127 @@ export function CoachDashboard() {
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                                <XAxis
-                                    dataKey="name"
-                                    stroke="#475569"
-                                    fontSize={10}
-                                    fontWeight="bold"
-                                    axisLine={false}
-                                    tickLine={false}
-                                />
-                                <YAxis
-                                    stroke="#475569"
-                                    fontSize={10}
-                                    fontWeight="bold"
-                                    axisLine={false}
-                                    tickLine={false}
-                                />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: '#020617', border: '1px solid #1e293b', borderRadius: '12px' }}
-                                    itemStyle={{ fontSize: '10px', color: '#10b981', fontWeight: 'bold', textTransform: 'uppercase' }}
-                                />
-                                <Area
-                                    type="monotone"
-                                    dataKey="load"
-                                    stroke="#10b981"
-                                    strokeWidth={4}
-                                    fillOpacity={1}
-                                    fill="url(#colorLoad)"
-                                />
+                                <XAxis dataKey="name" stroke="#475569" fontSize={10} fontWeight="bold" axisLine={false} tickLine={false} />
+                                <YAxis stroke="#475569" fontSize={10} fontWeight="bold" axisLine={false} tickLine={false} />
+                                <Tooltip contentStyle={{ backgroundColor: '#020617', border: '1px solid #1e293b', borderRadius: '12px' }} itemStyle={{ fontSize: '10px', color: '#10b981', fontWeight: 'bold' }} />
+                                <Area type="monotone" dataKey="load" stroke="#10b981" strokeWidth={4} fillOpacity={1} fill="url(#colorLoad)" />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
                 </Card>
             </div>
 
+            {/* Row 3: Leaderboards (Heroes vs Ghosts) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Performance Alerts (Missed Workouts) */}
-                <Card className="bg-slate-950 border-rose-500/10 shadow-3xl">
+                {/* Heroes */}
+                <Card className="bg-slate-950 border-emerald-500/10 shadow-3xl">
                     <CardHeader
-                        title={t('missed_workout_alert')}
-                        icon={<AlertCircle className="text-rose-500" size={20} />}
+                        title={t('heroes_leaderboard')}
+                        icon={<Target className="text-emerald-400" size={20} />}
+                        action={<InfoTooltip content={t('heroes_tooltip')} />}
                     />
-                    <div className="space-y-4 pt-6">
-                        {missedWorkouts.map(alert => (
-                            <div key={alert.id} className="p-4 bg-rose-500/5 border border-rose-500/10 rounded-2xl flex items-center justify-between group hover:bg-rose-500/10 transition-all">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-rose-500 flex items-center justify-center text-slate-950 font-black text-lg">
-                                        {alert.avatar}
+                    <div className="space-y-3 pt-4">
+                        {heroes.length > 0 ? heroes.map((h, i) => (
+                            <div key={i} className="flex items-center justify-between p-3 bg-slate-900/40 rounded-xl border border-slate-800/50">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center font-black text-xs text-slate-950">
+                                        {i + 1}
                                     </div>
                                     <div>
-                                        <h4 className="text-xs font-black text-white uppercase tracking-tight">{alert.athlete}</h4>
-                                        <p className="text-[10px] text-rose-500/80 font-bold uppercase tracking-widest">{alert.workout}</p>
+                                        <h4 className="text-xs font-bold text-white uppercase">{h.name}</h4>
+                                        <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-widest">{h.compliance}% {t('compliance_label')}</p>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-2">{alert.daysAgo}</p>
-                                    <button className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-rose-400 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all">
-                                        Intervene
-                                    </button>
+                                <div className="text-emerald-400">
+                                    <TrendingUp size={16} />
                                 </div>
                             </div>
-                        ))}
+                        )) : (
+                            <p className="text-xs text-slate-500 italic p-4 text-center">{t('no_heroes_yet')}</p>
+                        )}
                     </div>
                 </Card>
 
-                {/* Recent Platform Notifications */}
-                <Card className="bg-slate-950 border-slate-800 shadow-3xl">
-                    <CardHeader title="System Pulse" icon={<Clock className="text-slate-500" size={20} />} />
-                    <div className="space-y-4 pt-6">
-                        {[
-                            { text: 'Emma Wilson shared a new session recording.', time: '12m ago', icon: <CheckCircle2 className="text-emerald-500" /> },
-                            { text: 'New subscription: Alex Morgan (Premium Performance)', time: '45m ago', icon: <TrendingUp className="text-emerald-400" /> },
-                            { text: 'Garmin Cloud Sync completed for 12 athletes. ', time: '1h ago', icon: <Activity className="text-blue-500" /> },
-                            { text: 'James Miller updated his season objective.', time: '2h ago', icon: <Target className="text-indigo-500" /> },
-                        ].map((n, i) => (
-                            <div key={i} className="flex gap-4 p-4 hover:bg-slate-900/50 rounded-2xl transition-all cursor-default group">
-                                <div className="mt-1">{n.icon}</div>
-                                <div>
-                                    <p className="text-[11px] text-white font-medium uppercase tracking-tight group-hover:text-emerald-400 transition-colors">{n.text}</p>
-                                    <p className="text-[9px] text-slate-600 font-bold uppercase tracking-widest mt-1">{n.time}</p>
+                {/* Ghosts */}
+                <Card className="bg-slate-950 border-rose-500/10 shadow-3xl">
+                    <CardHeader
+                        title={t('ghosts_leaderboard')}
+                        icon={<Ghost className="text-rose-400" size={20} />}
+                        action={<InfoTooltip content={t('ghosts_tooltip')} />}
+                    />
+                    <div className="space-y-3 pt-4">
+                        {ghosts.length > 0 ? ghosts.map((g, i) => (
+                            <div key={i} className="flex items-center justify-between p-3 bg-rose-500/5 rounded-xl border border-rose-500/10">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center font-black text-xs text-rose-400">
+                                        !
+                                    </div>
+                                    <div>
+                                        <h4 className="text-xs font-bold text-white uppercase">{g.name}</h4>
+                                        <p className="text-[9px] text-rose-400 font-bold uppercase tracking-widest">{g.compliance}% - {t('last_active_label')} {g.lastActive}</p>
+                                    </div>
                                 </div>
+                                <button className="px-3 py-1 bg-rose-500 text-white rounded text-[8px] font-black uppercase hover:bg-rose-600">
+                                    {t('ping_action')}
+                                </button>
                             </div>
-                        ))}
-                        <button
-                            onClick={() => navigate('/pricing')}
-                            className="w-full mt-4 py-4 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-500/20 transition-all flex items-center justify-center gap-2"
-                        >
-                            <Tag size={14} /> Manage My Pricing & Offers
-                        </button>
+                        )) : (
+                            <p className="text-xs text-slate-500 italic p-4 text-center">{t('everyone_active')}</p>
+                        )}
                     </div>
                 </Card>
             </div>
 
+            {/* Row 4: Business Intelligence */}
+            <Card className="bg-gradient-to-br from-slate-900 to-slate-950 border-indigo-500/20 shadow-3xl">
+                <CardHeader
+                    title={t('business_opportunities')}
+                    icon={<TrendingUp className="text-indigo-400" size={20} />}
+                    action={<InfoTooltip content={t('business_tooltip')} />}
+                />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-6">
+                    {opportunities.map((op, i) => (
+                        <div key={i} className={cn(
+                            "p-4 rounded-2xl border flex flex-col justify-between h-full transition-all hover:scale-105",
+                            op.type === 'upsell' ? "bg-emerald-500/5 border-emerald-500/20" : "bg-amber-500/5 border-amber-500/20"
+                        )}>
+                            <div>
+                                <div className="flex justify-between items-start mb-3">
+                                    <span className={cn(
+                                        "px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest",
+                                        op.type === 'upsell' ? "bg-emerald-500 text-slate-950" : "bg-amber-500 text-slate-950"
+                                    )}>
+                                        {op.type === 'upsell' ? t('upsell_opportunity') : t('downsell_opportunity')}
+                                    </span>
+                                    <ArrowUpRight size={14} className="opacity-50" />
+                                </div>
+                                <h4 className="text-sm font-black text-white uppercase mb-1">{op.athlete.name}</h4>
+                                <p className="text-[10px] text-slate-400 font-medium leading-tight mb-4">
+                                    {op.type === 'upsell' ? t('upsell_desc') : t('downsell_desc')}
+                                </p>
+                            </div>
+                            <button className="w-full py-2 bg-slate-950 border border-slate-800 rounded-lg text-[9px] font-black uppercase text-white hover:bg-slate-800">
+                                {t('opportunity_action')}
+                            </button>
+                        </div>
+                    ))}
+                    {opportunities.length === 0 && (
+                        <div className="col-span-4 py-8 text-center text-slate-500 text-xs italic">
+                            {t('ai_analyzing')}
+                        </div>
+                    )}
+                </div>
+            </Card>
+
+
             {/* Advanced Invite Modal */}
             {showInviteModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-black/80 animate-in fade-in duration-300">
-                    <Card className="w-full max-w-lg border-emerald-500/20 shadow-2xl animate-in zoom-in-95 duration-500 bg-slate-950 p-8">
+                    <Card className="w-full max-w-lg border-emerald-500/20 shadow-2xl animate-in zoom-in-95 duration-500 bg-slate-950 p-8 shadow-emerald-500/10">
                         <div className="flex justify-between items-center mb-8">
                             <div>
                                 <h2 className="text-2xl font-black text-white uppercase tracking-tighter">{t('invite_athlete')}</h2>
-                                <p className="text-slate-500 text-[9px] font-bold uppercase tracking-widest mt-1">Onboarding Orchestration phase {inviteStep}/2</p>
+                                <p className="text-slate-500 text-[9px] font-bold uppercase tracking-widest mt-1">{t('invite_phase')} {inviteStep}/2</p>
                             </div>
                             <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
                                 <UserPlus size={24} />
@@ -427,37 +483,38 @@ export function CoachDashboard() {
                             {inviteStep === 1 && (
                                 <div className="space-y-6 animate-in slide-in-from-right-10 duration-500">
                                     <div className="space-y-2">
-                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Athlete Identity</label>
+                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{t('athlete_identity')}</label>
                                         <div className="grid grid-cols-2 gap-4">
                                             <input
                                                 type="text"
-                                                placeholder="Full Name"
+                                                placeholder={t('full_name_label')}
                                                 value={inviteData.name}
                                                 onChange={e => setInviteData(p => ({ ...p, name: e.target.value }))}
-                                                className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-4 text-white text-xs font-bold"
+                                                className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-4 text-white text-xs font-bold focus:outline-none focus:border-emerald-500 transition-all"
                                             />
                                             <input
                                                 type="email"
                                                 required
-                                                placeholder="athlete.email@domain.com"
+                                                placeholder="email@domain.com"
                                                 value={inviteData.email}
                                                 onChange={e => setInviteData(p => ({ ...p, email: e.target.value }))}
-                                                className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-4 text-white text-xs font-bold"
+                                                className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-4 text-white text-xs font-bold focus:outline-none focus:border-emerald-500 transition-all"
                                             />
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Primary Sport</label>
+                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{t('primary_sport_label')}</label>
                                         <select
                                             value={inviteData.sport}
                                             onChange={e => setInviteData(p => ({ ...p, sport: e.target.value }))}
-                                            className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-4 text-white text-xs font-black uppercase tracking-widest"
+                                            className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-4 text-white text-xs font-black uppercase tracking-widest appearance-none focus:outline-none focus:border-emerald-500 transition-all"
                                         >
-                                            <option value="">Select Category...</option>
+                                            <option value="">{t('select')}</option>
                                             <option value="Running">Running</option>
                                             <option value="Cycling">Cycling</option>
                                             <option value="Swimming">Swimming</option>
                                             <option value="Triathlon">Triathlon</option>
+                                            <option value="Trail">Trail</option>
                                         </select>
                                     </div>
                                 </div>
@@ -466,22 +523,18 @@ export function CoachDashboard() {
                             {inviteStep === 2 && (
                                 <div className="space-y-6 animate-in slide-in-from-right-10 duration-500">
                                     <div className="space-y-2">
-                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Performance Objective (Manual Entry)</label>
+                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{t('main_goal_label')}</label>
                                         <textarea
-                                            placeholder="e.g. Ironman 70.3 Nice, Sub 1:20 Half Marathon..."
+                                            placeholder="e.g. Ironman 70.3 Nice..."
                                             value={inviteData.objective}
                                             onChange={e => setInviteData(p => ({ ...p, objective: e.target.value }))}
-                                            className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-4 text-white text-xs font-medium h-24"
+                                            className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-4 text-white text-xs font-medium h-24 resize-none focus:outline-none focus:border-emerald-500 transition-all"
                                         />
                                     </div>
                                     <div className="space-y-4">
-                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Suggested Subscription Plan</label>
-                                        <div className="grid grid-cols-1 gap-2">
-                                            {[
-                                                { id: 'p1', name: 'Basic Coaching', price: '49€' },
-                                                { id: 'p2', name: 'Premium Performance', price: '99€' },
-                                                { id: 'p3', name: 'Elite Architect', price: '249€' }
-                                            ].map(plan => (
+                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('suggested_plan')}</label>
+                                        <div className="grid grid-cols-1 gap-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+                                            {offerings.filter(o => o.type === 'PACKAGE').map(plan => (
                                                 <button
                                                     key={plan.id}
                                                     type="button"
@@ -495,14 +548,19 @@ export function CoachDashboard() {
                                                         <div className={cn("w-2 h-2 rounded-full", inviteData.suggestedPlan === plan.id ? "bg-emerald-500" : "bg-slate-700")} />
                                                         <span className="text-[10px] font-black text-white uppercase tracking-tight">{plan.name}</span>
                                                     </div>
-                                                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">{plan.price}</span>
+                                                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">€{plan.price_cents / 100}</span>
                                                 </button>
                                             ))}
+                                            {offerings.filter(o => o.type === 'PACKAGE').length === 0 && (
+                                                <p className="text-[10px] text-slate-500 italic p-4 text-center border border-dashed border-slate-800 rounded-2xl">
+                                                    Aucun forfait configuré. Configurez vos offres d'abord.
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Initial Form Status</label>
+                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{t('initial_form')}</label>
                                         <div className="flex gap-2">
                                             {['recovering', 'optimal', 'peak'].map(s => (
                                                 <button
@@ -555,7 +613,7 @@ export function CoachDashboard() {
                                         type="submit"
                                         className="flex-2 px-12 py-4 bg-emerald-600 hover:bg-emerald-500 text-slate-950 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-emerald-500/20 transition-all flex items-center justify-center gap-2"
                                     >
-                                        Deploy Invitation <CheckCircle2 size={16} />
+                                        {t('deploy_invitation')} <CheckCircle2 size={16} />
                                     </button>
                                 )}
                             </div>
@@ -563,6 +621,7 @@ export function CoachDashboard() {
                     </Card>
                 </div>
             )}
+
             {/* Technical Assessment Modal */}
             {selectedAthleteForTech && (
                 <CoachTechnicalForm
@@ -574,7 +633,7 @@ export function CoachDashboard() {
                                 .from('technical_assessments')
                                 .insert([{
                                     coach_id: currentUser?.id,
-                                    athlete_id: (selectedAthleteForTech as any).id,
+                                    athlete_id: selectedAthleteForTech.id,
                                     form_status: data.formStatus,
                                     fatigue: data.fatigue,
                                     motivation: data.motivation,
@@ -583,12 +642,14 @@ export function CoachDashboard() {
 
                             if (error) {
                                 logger.error('Error saving technical assessment:', error);
-                                alert('Failed to save assessment');
+                                toast.error('Failed to save assessment');
                             } else {
-                                alert('Assessment saved successfully');
+                                toast.success('Assessment saved successfully');
+                                setSelectedAthleteForTech(null);
                             }
                         } catch (err) {
                             logger.error('Exception saving technical assessment:', err);
+                            toast.error('An error occurred');
                         }
                     }}
                 />
@@ -596,3 +657,4 @@ export function CoachDashboard() {
         </div>
     );
 }
+

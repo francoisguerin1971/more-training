@@ -2,7 +2,13 @@ import React, { useState } from 'react';
 import { Info } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 
-export function InfoTooltip({ content, position = 'top', className }) {
+interface InfoTooltipProps {
+    content: string;
+    position?: 'top' | 'bottom' | 'left' | 'right';
+    className?: string;
+}
+
+export function InfoTooltip({ content, position = 'top', className }: InfoTooltipProps) {
     const [isVisible, setIsVisible] = useState(false);
 
     const positions = {

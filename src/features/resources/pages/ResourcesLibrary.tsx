@@ -1,70 +1,59 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/shared/components/ui/Card';
 import {
     BookOpen, Search, FileText, Video, Link as LinkIcon,
-    ExternalLink, Download, PlayCircle, Filter
+    ExternalLink, Download, PlayCircle, Filter, Plus,
+    Trash2, Edit2, X, CheckCircle2, Globe, Lock, Loader2
 } from 'lucide-react';
 import { useLanguage } from '@/shared/context/LanguageContext';
+import { useAuthStore } from '@/features/auth/stores/authStore';
 import { cn } from '@/core/utils/cn';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { fr, es, it, de, ca } from 'date-fns/locale';
 
-// Mock Data for Resources
-const MOCK_RESOURCES = [
-    {
-        id: 1,
-        title: "Guide Nutrition 2026",
-        description: "Protocole complet pour l'optimisation de la performance.",
-        type: "document",
-        date: "15 Jan 2026",
-        author: "Coach Alex"
-    },
-    {
-        id: 2,
-        title: "Technique Squat Analysis",
-        description: "Décomposition mouvement par mouvement du Back Squat.",
-        type: "video",
-        date: "12 Jan 2026",
-        author: "Coach Alex",
-        duration: "12:30"
-    },
-    {
-        id: 3,
-        title: "Strava Team Club",
-        description: "Rejoignez le club privé pour les challenges hebdomadaires.",
-        type: "link",
-        date: "01 Jan 2026",
-        url: "https://strava.com"
-    },
-    {
-        id: 4,
-        title: "Sommeil & Récupération",
-        description: "Les 10 commandements pour un sommeil réparateur.",
-        type: "document",
-        date: "20 Dec 2025",
-        author: "Dr. Sleep"
-    },
-    {
-        id: 5,
-        title: "Mental Prep Routine",
-        description: "Visualisation guidée avant compétition.",
-        type: "video",
-        date: "10 Dec 2025",
-        author: "Coach Chill",
-        duration: "15:00"
-    },
-    {
-        id: 6,
-        title: "Whoop Team Invite",
-        description: "Lien d'invitation pour partager vos données biométriques.",
-        type: "link",
-        date: "01 Dec 2025",
-        url: "https://whoop.com"
-    }
-];
+const locales: Record<string, any> = { fr, es, it, de, ca };
 
 export function ResourcesLibrary() {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
+    const { currentUser, getCoachResources, getSharedResources, saveCoachResource, deleteCoachResource } = useAuthStore();
+
+    const [resources, setResources] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilter, setActiveFilter] = useState('all');
+    const [showModal, setShowModal] = useState(false);
+    const [editingResource, setEditingResource] = useState<any>(null);
+
+    const isCoach = currentUser?.role === 'pro';
+
+    const [formData, setFormData] = useState({
+        title: '',
+        description: '',
+        type: 'document',
+        content_url: '',
+        is_public: true
+    });
+
+    const loadResources = async () => {
+        if (!currentUser) return;
+        setLoading(true);
+        try {
+            const data = isCoach
+                ? await getCoachResources(currentUser.id)
+                : await getSharedResources();
+            setResources(data || []);
+        } catch (err) {
+            console.error('Failed to load resources:', err);
+            toast.error(t('error_generic'));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadResources();
+    }, [currentUser, isCoach]);
 
     const filters = [
         { id: 'all', label: t('category_all'), icon: Filter },
@@ -73,12 +62,66 @@ export function ResourcesLibrary() {
         { id: 'link', label: t('category_links'), icon: LinkIcon },
     ];
 
-    const filteredResources = MOCK_RESOURCES.filter(resource => {
+    const filteredResources = resources.filter(resource => {
         const matchesSearch = resource.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            resource.description.toLowerCase().includes(searchQuery.toLowerCase());
+            (resource.description?.toLowerCase() || '').includes(searchQuery.toLowerCase());
         const matchesFilter = activeFilter === 'all' || resource.type === activeFilter;
         return matchesSearch && matchesFilter;
     });
+
+    const handleOpenModal = (resource?: any) => {
+        if (resource) {
+            setEditingResource(resource);
+            setFormData({
+                title: resource.title,
+                description: resource.description || '',
+                type: resource.type,
+                content_url: resource.content_url,
+                is_public: resource.is_public
+            });
+        } else {
+            setEditingResource(null);
+            setFormData({
+                title: '',
+                description: '',
+                type: 'document',
+                content_url: '',
+                is_public: true
+            });
+        }
+        setShowModal(true);
+    };
+
+    const handleSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!currentUser?.id) return;
+
+        const payload = {
+            ...formData,
+            id: editingResource?.id,
+            coach_id: currentUser.id
+        };
+
+        const { error } = await saveCoachResource(payload);
+        if (error) {
+            toast.error(t('error_generic'));
+        } else {
+            toast.success(t('save_success'));
+            setShowModal(false);
+            loadResources();
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm(t('delete_confirm'))) return;
+        const { error } = await deleteCoachResource(id);
+        if (error) {
+            toast.error(t('error_generic'));
+        } else {
+            toast.success(t('delete_success'));
+            loadResources();
+        }
+    };
 
     const getIcon = (type: string) => {
         switch (type) {
@@ -92,7 +135,7 @@ export function ResourcesLibrary() {
     const getActionLabel = (type: string) => {
         switch (type) {
             case 'document': return t('download_resource');
-            case 'video': return t('open_resource'); // "Watch" in future
+            case 'video': return t('open_resource');
             case 'link': return t('open_resource');
             default: return t('open_resource');
         }
@@ -101,26 +144,35 @@ export function ResourcesLibrary() {
     return (
         <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-700">
             {/* Header */}
-            <div>
-                <h1 className="text-4xl font-black text-white uppercase tracking-tighter">
-                    {t('library')}
-                </h1>
-                <p className="text-slate-500 mt-1 font-bold uppercase tracking-widest text-[10px]">
-                    {t('library_subtitle') || "Éducation & Ressources"}
-                </p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-4xl font-black text-white uppercase tracking-tighter">
+                        {t('library')}
+                    </h1>
+                    <p className="text-slate-500 mt-1 font-bold uppercase tracking-widest text-[10px]">
+                        {t('library_subtitle')}
+                    </p>
+                </div>
+                {isCoach && (
+                    <button
+                        onClick={() => handleOpenModal()}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-slate-950 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all shadow-xl shadow-emerald-500/10 active:scale-95"
+                    >
+                        <Plus size={16} /> {t('add_resource')}
+                    </button>
+                )}
             </div>
 
             {/* Controls: Search & Filter */}
-            <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
-
+            <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-slate-900/50 p-4 rounded-3xl border border-slate-800">
                 {/* Search Bar */}
                 <div className="relative w-full md:w-96 group">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                         <Search size={16} className="text-slate-500 group-focus-within:text-emerald-400 transition-colors" />
                     </div>
                     <input
                         type="text"
-                        className="block w-full pl-10 pr-3 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-sm placeholder-slate-500 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all font-medium"
+                        className="block w-full pl-12 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-xs placeholder-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/50 transition-all font-bold uppercase tracking-widest"
                         placeholder={t('search_resources')}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -128,7 +180,7 @@ export function ResourcesLibrary() {
                 </div>
 
                 {/* Filter Tabs */}
-                <div className="flex p-1 bg-slate-900 rounded-xl border border-slate-800">
+                <div className="flex p-1.5 bg-slate-950 rounded-2xl border border-slate-800 w-full md:w-auto">
                     {filters.map((filter) => {
                         const Icon = filter.icon;
                         const isActive = activeFilter === filter.id;
@@ -137,14 +189,14 @@ export function ResourcesLibrary() {
                                 key={filter.id}
                                 onClick={() => setActiveFilter(filter.id)}
                                 className={cn(
-                                    "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-tight transition-all",
+                                    "flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
                                     isActive
-                                        ? "bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-900/20"
-                                        : "text-slate-400 hover:text-white hover:bg-slate-800"
+                                        ? "bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20"
+                                        : "text-slate-500 hover:text-white hover:bg-slate-900"
                                 )}
                             >
                                 <Icon size={14} />
-                                <span className="hidden md:inline">{filter.label}</span>
+                                <span className="hidden sm:inline">{filter.label}</span>
                             </button>
                         );
                     })}
@@ -152,51 +204,206 @@ export function ResourcesLibrary() {
             </div>
 
             {/* Content Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredResources.length > 0 ? (
-                    filteredResources.map((resource) => (
-                        <Card key={resource.id} className="bg-slate-950 border-slate-800 hover:border-emerald-500/30 transition-all group cursor-pointer h-full flex flex-col">
-                            <div className="p-6 flex-1">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 group-hover:bg-slate-800 transition-colors">
-                                        {getIcon(resource.type)}
+            {loading ? (
+                <div className="py-20 flex flex-col items-center justify-center space-y-4">
+                    <Loader2 size={40} className="text-emerald-500 animate-spin" />
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest animate-pulse">Synchronisation de la bibliothèque...</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {filteredResources.length > 0 ? (
+                        filteredResources.map((resource) => (
+                            <Card key={resource.id} className="group bg-slate-950 border-slate-800 hover:border-emerald-500/30 transition-all cursor-pointer h-full flex flex-col shadow-2xl overflow-hidden">
+                                <div className="p-8 flex-1">
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div className="p-4 bg-slate-900 rounded-2xl border border-slate-800 group-hover:bg-slate-800 transition-colors shadow-inner">
+                                            {getIcon(resource.type)}
+                                        </div>
+                                        <div className="flex flex-col items-end gap-2">
+                                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
+                                                {resource.type}
+                                            </span>
+                                            {isCoach && (
+                                                <div className="flex items-center gap-1">
+                                                    {resource.is_public ? <Globe size={12} className="text-emerald-500" /> : <Lock size={12} className="text-amber-500" />}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-slate-900 px-2 py-1 rounded-md">
-                                        {resource.type}
-                                    </span>
+
+                                    <h3 className="text-lg font-black text-white mb-3 line-clamp-2 uppercase tracking-tighter group-hover:text-emerald-400 transition-colors leading-none">
+                                        {resource.title}
+                                    </h3>
+                                    <p className="text-[11px] text-slate-500 font-medium leading-relaxed mb-6 line-clamp-3 uppercase tracking-tight">
+                                        {resource.description}
+                                    </p>
                                 </div>
 
-                                <h3 className="text-lg font-bold text-white mb-2 line-clamp-2 group-hover:text-emerald-400 transition-colors">
-                                    {resource.title}
-                                </h3>
-                                <p className="text-xs text-slate-400 leading-relaxed mb-4 line-clamp-3">
-                                    {resource.description}
-                                </p>
+                                <div className="px-8 py-5 border-t border-slate-900 bg-slate-900/20 flex items-center justify-between">
+                                    <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                                        {resource.created_at ? format(new Date(resource.created_at), 'dd MMM yyyy', { locale: locales[language] }) : 'N/A'}
+                                    </span>
+
+                                    <div className="flex items-center gap-4">
+                                        {isCoach && (
+                                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleOpenModal(resource); }}
+                                                    className="p-2 hover:bg-slate-800 rounded-xl text-slate-500 hover:text-white transition-colors border border-transparent hover:border-slate-700"
+                                                >
+                                                    <Edit2 size={14} />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleDelete(resource.id); }}
+                                                    className="p-2 hover:bg-rose-500/10 rounded-xl text-slate-500 hover:text-rose-500 transition-colors border border-transparent hover:border-rose-500/20"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        )}
+                                        <a
+                                            href={resource.content_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-400 hover:text-emerald-300 transition-all bg-emerald-500/5 px-4 py-2 rounded-xl border border-emerald-500/10 group-hover:bg-emerald-500/10"
+                                        >
+                                            {getActionLabel(resource.type)}
+                                            {resource.type === 'link' ? <ExternalLink size={12} /> : <Download size={12} />}
+                                        </a>
+                                    </div>
+                                </div>
+                            </Card>
+                        ))
+                    ) : (
+                        <div className="col-span-full py-24 flex flex-col items-center justify-center text-center">
+                            <div className="w-20 h-20 bg-slate-900 rounded-3xl flex items-center justify-center mb-6 border border-slate-800 shadow-2xl relative">
+                                <BookOpen size={32} className="text-slate-700" />
+                                <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center border-4 border-slate-950">
+                                    <Search size={14} className="text-slate-500" />
+                                </div>
+                            </div>
+                            <h3 className="text-white font-black text-xl uppercase tracking-tighter">{t('no_resources_found')}</h3>
+                            <p className="text-slate-600 text-[10px] font-bold uppercase tracking-widest mt-3 max-w-sm">
+                                {isCoach ? "Commencez à bâtir votre bibliothèque pour vos athlètes." : "Votre coach n'a pas encore partagé de ressources."}
+                            </p>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Add/Edit Modal */}
+            {showModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-black/80 animate-in fade-in duration-300">
+                    <Card className="w-full max-w-xl border-emerald-500/20 shadow-2xl animate-in zoom-in-95 duration-500 bg-slate-950 p-10 shadow-emerald-500/10">
+                        <div className="flex justify-between items-center mb-10">
+                            <div>
+                                <h2 className="text-3xl font-black text-white uppercase tracking-tighter">
+                                    {editingResource ? t('edit_resource') : t('add_resource')}
+                                </h2>
+                                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-1">Partagez votre expertise</p>
+                            </div>
+                            <button onClick={() => setShowModal(false)} className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-500 hover:text-white transition-all hover:border-slate-700">
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSave} className="space-y-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('resource_title')}</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="Titre de la ressource..."
+                                        value={formData.title}
+                                        onChange={e => setFormData(p => ({ ...p, title: e.target.value }))}
+                                        className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-6 py-4 text-white text-sm font-bold focus:outline-none focus:border-emerald-500 transition-all transition-all placeholder:text-slate-700"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('resource_type')}</label>
+                                    <div className="flex p-1.5 bg-slate-900 rounded-2xl border border-slate-800 gap-1">
+                                        {['document', 'video', 'link'].map((type) => (
+                                            <button
+                                                key={type}
+                                                type="button"
+                                                onClick={() => setFormData(p => ({ ...p, type }))}
+                                                className={cn(
+                                                    "flex-1 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all",
+                                                    formData.type === type
+                                                        ? "bg-emerald-500 text-slate-950 shadow-lg"
+                                                        : "text-slate-500 hover:text-white"
+                                                )}
+                                            >
+                                                {type === 'document' && <FileText size={14} className="inline mr-1" />}
+                                                {type === 'video' && <PlayCircle size={14} className="inline mr-1" />}
+                                                {type === 'link' && <LinkIcon size={14} className="inline mr-1" />}
+                                                {type}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
 
-                            <div className="px-6 py-4 border-t border-slate-800/50 bg-slate-900/30 flex items-center justify-between">
-                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                                    {resource.date}
-                                </span>
-                                <button className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-400 group-hover:translate-x-1 transition-transform">
-                                    {getActionLabel(resource.type)}
-                                    {resource.type === 'link' ? <ExternalLink size={12} /> : <Download size={12} />}
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('resource_url')}</label>
+                                <input
+                                    type="url"
+                                    required
+                                    placeholder="https://"
+                                    value={formData.content_url}
+                                    onChange={e => setFormData(p => ({ ...p, content_url: e.target.value }))}
+                                    className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-6 py-4 text-white text-sm font-bold focus:outline-none focus:border-emerald-500 transition-all placeholder:text-slate-700"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('resource_description')}</label>
+                                <textarea
+                                    placeholder="Décrivez brièvement le contenu..."
+                                    value={formData.description}
+                                    onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
+                                    className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-6 py-4 text-white text-sm font-medium h-32 resize-none focus:outline-none focus:border-emerald-500 transition-all placeholder:text-slate-700"
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-between p-6 bg-slate-950 border border-slate-800 rounded-3xl group hover:border-emerald-500/30 transition-all cursor-pointer select-none"
+                                onClick={() => setFormData(p => ({ ...p, is_public: !p.is_public }))}>
+                                <div className="flex items-center gap-4">
+                                    <div className={cn("p-3 rounded-2xl transition-all", formData.is_public ? "bg-emerald-500/10 text-emerald-500" : "bg-slate-900 text-slate-600")}>
+                                        <Globe size={24} />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-xs font-black text-white uppercase tracking-widest">{t('resource_public')}</h4>
+                                        <p className="text-[9px] text-slate-600 font-bold uppercase tracking-widest mt-1">
+                                            {formData.is_public ? "Visible par tous vos athlètes" : "Confidentialité restreinte"}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className={cn(
+                                    "w-14 h-8 rounded-full transition-all relative p-1",
+                                    formData.is_public ? "bg-emerald-600" : "bg-slate-800"
+                                )}>
+                                    <div className={cn(
+                                        "w-6 h-6 bg-white rounded-full transition-all shadow-xl",
+                                        formData.is_public ? "translate-x-6" : "translate-x-0"
+                                    )} />
+                                </div>
+                            </div>
+
+                            <div className="pt-6">
+                                <button
+                                    type="submit"
+                                    className="w-full py-5 bg-emerald-600 hover:bg-emerald-500 text-slate-950 rounded-2xl font-black uppercase tracking-widest shadow-2xl shadow-emerald-500/20 transition-all flex items-center justify-center gap-3 active:scale-95"
+                                >
+                                    {t('save_resource')} <CheckCircle2 size={20} />
                                 </button>
                             </div>
-                        </Card>
-                    ))
-                ) : (
-                    <div className="col-span-full py-20 flex flex-col items-center justify-center text-center">
-                        <div className="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center mb-4 border border-slate-800">
-                            <Search size={24} className="text-slate-500" />
-                        </div>
-                        <h3 className="text-white font-bold text-lg">{t('no_resources_found')}</h3>
-                        <p className="text-slate-500 text-sm mt-2 max-w-md">
-                            Essayez de modifier vos filtres ou votre recherche.
-                        </p>
-                    </div>
-                )}
-            </div>
+                        </form>
+                    </Card>
+                </div>
+            )}
         </div>
     );
 }

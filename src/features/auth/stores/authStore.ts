@@ -505,5 +505,68 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         } catch (err: any) {
             return { error: err };
         }
+    },
+    getCoachResources: async (coachId: string) => {
+        try {
+            const { data, error } = await supabase
+                .from('coach_resources')
+                .select('*')
+                .eq('coach_id', coachId)
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                logger.error('Error fetching resources:', error);
+                return [];
+            }
+            return data || [];
+        } catch (err) {
+            logger.error('Exception fetching resources:', err);
+            return [];
+        }
+    },
+    getSharedResources: async () => {
+        try {
+            const { data, error } = await supabase
+                .from('coach_resources')
+                .select('*')
+                .eq('is_public', true)
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                logger.error('Error fetching shared resources:', error);
+                return [];
+            }
+            return data || [];
+        } catch (err) {
+            logger.error('Exception fetching shared resources:', err);
+            return [];
+        }
+    },
+    saveCoachResource: async (resource: any) => {
+        try {
+            const { data, error } = await supabase
+                .from('coach_resources')
+                .upsert([resource])
+                .select()
+                .single();
+
+            if (error) logger.error('Error saving resource:', error);
+            return { data, error };
+        } catch (err: any) {
+            return { data: null, error: err };
+        }
+    },
+    deleteCoachResource: async (resourceId: string) => {
+        try {
+            const { error } = await supabase
+                .from('coach_resources')
+                .delete()
+                .eq('id', resourceId);
+
+            if (error) logger.error('Error deleting resource:', error);
+            return { error };
+        } catch (err: any) {
+            return { error: err };
+        }
     }
 }));

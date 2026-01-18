@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Zap, Shield,
@@ -17,18 +17,21 @@ export function LandingPage() {
     const navigate = useNavigate();
     const { t } = useLanguage();
     const { currentUser } = useAuthStore();
+    const [showProPlans, setShowProPlans] = useState(false);
 
     // Internal Navigation Handlers
     const onLogin = () => navigate('/login');
     const onJoin = (role: string = 'athlete') => navigate(`/onboarding?role=${role}`);
     const onViewPricing = () => {
-        const section = document.getElementById('pricing-section');
-        if (section) {
-            section.scrollIntoView({ behavior: 'smooth' });
-        }
+        setShowProPlans(true);
+        setTimeout(() => {
+            const section = document.getElementById('pricing-section');
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth' });
+            }
+        }, 100);
     };
 
-    // Plans data hardcoded in French
     // Plans data using translations
     const coachPlans = [
         {
@@ -262,8 +265,8 @@ export function LandingPage() {
             )}
 
             {/* Pro Plans Pricing Section */}
-            {(!currentUser || currentUser.role !== 'athlete') && (
-                <section id="pricing-section" className="py-32 bg-slate-950 relative">
+            {showProPlans && (!currentUser || currentUser.role !== 'athlete') && (
+                <section id="pricing-section" className="py-32 bg-slate-950 relative animate-in fade-in slide-in-from-bottom-12 duration-1000">
                     <div className="max-w-7xl mx-auto px-6">
                         <div className="text-center mb-20">
                             <h2 className="text-4xl sm:text-5xl font-black uppercase tracking-tighter mb-6">
