@@ -20,8 +20,13 @@ export function LandingPage() {
 
     // Internal Navigation Handlers
     const onLogin = () => navigate('/login');
-    const onJoin = () => navigate('/onboarding');
-    const onViewPricing = () => navigate('/pricing');
+    const onJoin = (role: string = 'athlete') => navigate(`/onboarding?role=${role}`);
+    const onViewPricing = () => {
+        const section = document.getElementById('pricing-section');
+        if (section) {
+            section.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
 
     // Plans data hardcoded in French
     // Plans data using translations
@@ -88,11 +93,11 @@ export function LandingPage() {
                     <div className="flex items-center gap-4 sm:gap-8">
                         <LanguageDropdown />
                         <div className="flex items-center gap-4 sm:gap-8 border-l border-white/10 pl-4 sm:pl-8">
-                            <button onClick={onLogin} className="text-[10px] font-black uppercase tracking-widest text-slate-100 hover:text-white transition-all">
+                            <button onClick={() => onLogin()} className="text-[10px] font-black uppercase tracking-widest text-slate-100 hover:text-white transition-all">
                                 {t('sign_in')}
                             </button>
                             <button
-                                onClick={onJoin}
+                                onClick={() => onJoin('athlete')}
                                 className="bg-white text-slate-950 px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-white/5"
                             >
                                 {t('join_now')}
@@ -128,30 +133,34 @@ export function LandingPage() {
                                 {t('landing_hero_subtitle')}
                             </p>
 
-                            <div className="flex flex-col sm:flex-row items-center gap-6 animate-in fade-in slide-in-from-bottom-16 duration-1000 delay-300">
+                            <div className="flex flex-col sm:flex-row items-center gap-8 mb-16 animate-in fade-in slide-in-from-bottom-16 duration-1000 delay-300">
                                 <div className="group relative w-full sm:w-auto">
                                     <button
-                                        onClick={onJoin}
-                                        className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-10 py-5 rounded-3xl font-black text-xs uppercase tracking-widest transition-all shadow-2xl shadow-emerald-500/20 flex items-center justify-center gap-3"
+                                        onClick={() => onJoin('athlete')}
+                                        className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-10 py-5 rounded-3xl font-black text-[10px] uppercase tracking-widest transition-all shadow-2xl shadow-emerald-500/20 flex items-center justify-center gap-3"
                                     >
                                         {t('get_started_btn')}
                                         <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
                                     </button>
-                                    <p className="absolute -bottom-6 left-0 right-0 text-center sm:text-left text-[9px] font-bold text-emerald-500 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
-                                        {t('athlete_trial_hero')}
-                                    </p>
+                                    <div className="absolute top-full left-0 right-0 pt-3 pointer-events-none overflow-hidden h-6">
+                                        <p className="text-[9px] font-black text-emerald-500 uppercase tracking-[0.15em] text-center sm:text-left opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+                                            {t('athlete_trial_hero')}
+                                        </p>
+                                    </div>
                                 </div>
                                 <div className="group relative w-full sm:w-auto">
                                     <button
-                                        onClick={onJoin}
-                                        className="w-full sm:w-auto bg-slate-900 border border-slate-800 hover:bg-slate-800 px-10 py-5 rounded-3xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-3"
+                                        onClick={() => onJoin('pro')}
+                                        className="w-full sm:w-auto bg-slate-900 border border-slate-800 hover:bg-slate-800 px-10 py-5 rounded-3xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-3"
                                     >
                                         {t('find_coach_btn')}
                                         <Search size={18} />
                                     </button>
-                                    <p className="absolute -bottom-6 left-0 right-0 text-center sm:text-left text-[9px] font-bold text-slate-500 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
-                                        {t('coach_trial_hero')}
-                                    </p>
+                                    <div className="absolute top-full left-0 right-0 pt-3 pointer-events-none overflow-hidden h-6">
+                                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.15em] text-center sm:text-left opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+                                            {t('coach_trial_hero')}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -252,6 +261,73 @@ export function LandingPage() {
                 </section>
             )}
 
+            {/* Pro Plans Pricing Section */}
+            {(!currentUser || currentUser.role !== 'athlete') && (
+                <section id="pricing-section" className="py-32 bg-slate-950 relative">
+                    <div className="max-w-7xl mx-auto px-6">
+                        <div className="text-center mb-20">
+                            <h2 className="text-4xl sm:text-5xl font-black uppercase tracking-tighter mb-6">
+                                {t('coach_pricing_title')}
+                            </h2>
+                            <p className="text-slate-500 text-lg font-medium max-w-2xl mx-auto">
+                                {t('coach_pricing_subtitle')}
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            {coachPlans.map((plan, i) => (
+                                <div
+                                    key={i}
+                                    className={cn(
+                                        "relative p-8 rounded-[3rem] border transition-all duration-500 hover:translate-y-[-8px]",
+                                        plan.highlight
+                                            ? "bg-slate-900 border-emerald-500/50 shadow-2xl shadow-emerald-500/10"
+                                            : "bg-slate-900/50 border-white/5 hover:border-white/10"
+                                    )}
+                                >
+                                    {plan.highlight && (
+                                        <div className="absolute top-6 right-6 px-4 py-1.5 bg-emerald-500 text-slate-950 text-[9px] font-black uppercase tracking-widest rounded-full">
+                                            {t('most_popular')}
+                                        </div>
+                                    )}
+
+                                    <div className="mb-8">
+                                        <h3 className="text-xl font-black uppercase tracking-tight text-white mb-2">{plan.name}</h3>
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-4xl font-black text-white">{plan.price}</span>
+                                            <span className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">{t('pricing_per_month')}</span>
+                                        </div>
+                                    </div>
+
+                                    <ul className="space-y-4 mb-10">
+                                        {plan.features.map((feature, j) => (
+                                            <li key={j} className="flex items-center gap-3 text-[11px] font-bold text-slate-400 uppercase tracking-tight">
+                                                <div className="w-5 h-5 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                                                    <Zap size={12} strokeWidth={3} />
+                                                </div>
+                                                {feature}
+                                            </li>
+                                        ))}
+                                    </ul>
+
+                                    <button
+                                        onClick={() => onJoin('pro')}
+                                        className={cn(
+                                            "w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all",
+                                            plan.highlight
+                                                ? "bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20 hover:bg-emerald-400"
+                                                : "bg-white/5 text-white hover:bg-white/10 border border-white/10"
+                                        )}
+                                    >
+                                        {t('select_plan_btn')}
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+            )}
+
             {/* Athlete Experience */}
             <section className="py-32">
                 <div className="max-w-7xl mx-auto px-6">
@@ -291,7 +367,7 @@ export function LandingPage() {
                             </div>
 
                             <button
-                                onClick={onJoin}
+                                onClick={() => onJoin('athlete')}
                                 className="mt-16 bg-indigo-600 hover:bg-indigo-500 text-white px-10 py-5 rounded-3xl font-black text-xs uppercase tracking-widest transition-all shadow-2xl shadow-indigo-900/20 flex items-center gap-3 cursor-pointer group"
                             >
                                 {t('btn_explore_marketplace')} <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
@@ -434,9 +510,9 @@ export function LandingPage() {
                         <div>
                             <h5 className="text-[10px] font-black uppercase tracking-widest text-white mb-6">{t('footer_platform')}</h5>
                             <ul className="space-y-4 text-xs font-bold text-slate-500 uppercase tracking-tight">
-                                <li className="hover:text-emerald-400 cursor-pointer transition-colors">{t('footer_marketplace')}</li>
-                                <li className="hover:text-emerald-400 cursor-pointer transition-colors">{t('footer_for_coaches_link')}</li>
-                                <li className="hover:text-emerald-400 cursor-pointer transition-colors">{t('footer_ai_engine_link')}</li>
+                                <li onClick={() => navigate('/marketplace')} className="hover:text-emerald-400 cursor-pointer transition-colors">{t('footer_marketplace')}</li>
+                                <li onClick={onViewPricing} className="hover:text-emerald-400 cursor-pointer transition-colors">{t('footer_for_coaches_link')}</li>
+                                <li onClick={() => navigate('/ai-planner')} className="hover:text-emerald-400 cursor-pointer transition-colors">{t('footer_ai_engine_link')}</li>
                             </ul>
                         </div>
                         <div>

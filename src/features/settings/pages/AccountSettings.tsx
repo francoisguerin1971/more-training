@@ -13,6 +13,7 @@ import { useAuthStore } from '@/features/auth/stores/authStore';
 import { useLanguage } from '@/shared/context/LanguageContext';
 import { cn } from '@/shared/lib/utils';
 import { ImageCropModal } from '../components/ImageCropModal';
+import { PasswordStrengthIndicator } from '@/shared/components/form/PasswordStrengthIndicator';
 
 export function AccountSettings() {
     const { t, language, setLanguage } = useLanguage();
@@ -271,12 +272,13 @@ export function AccountSettings() {
         }
 
         if (passwordData.new !== passwordData.confirm) {
-            alert("Les nouveaux mots de passe ne correspondent pas.");
+            alert(t('passwords_dont_match'));
             return;
         }
 
-        if (passwordData.new.length < 6) {
-            alert("Le mot de passe doit faire au moins 6 caractères.");
+        const passRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+        if (!passRegex.test(passwordData.new)) {
+            alert(t('password_weak'));
             return;
         }
 
@@ -538,7 +540,7 @@ export function AccountSettings() {
                         <CardHeader title={t('general_info')} icon={<User className="text-emerald-400" size={20} />} />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
                             <div className="space-y-2">
-                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{t('first_name')}</label>
+                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center">{t('first_name')}<span className="text-rose-500 ml-1">*</span></label>
                                 <div className="relative">
                                     <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-700" size={16} />
                                     <input
@@ -551,7 +553,7 @@ export function AccountSettings() {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{t('last_name')}</label>
+                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center">{t('last_name')}<span className="text-rose-500 ml-1">*</span></label>
                                 <div className="relative">
                                     <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-700" size={16} />
                                     <input
@@ -564,7 +566,7 @@ export function AccountSettings() {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{t('pseudo')}</label>
+                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center">{t('pseudo')}<span className="text-rose-500 ml-1">*</span></label>
                                 <div className="relative">
                                     <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-700" size={16} />
                                     <input
@@ -577,7 +579,7 @@ export function AccountSettings() {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{t('email_label')}</label>
+                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center">{t('email_label')}<span className="text-rose-500 ml-1">*</span></label>
                                 <div className="relative">
                                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-700" size={16} />
                                     <input
@@ -602,7 +604,7 @@ export function AccountSettings() {
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{t('legal_name')}</label>
+                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center">{t('legal_name')}<span className="text-rose-500 ml-1">*</span></label>
                                         <div className="relative">
                                             <Building className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-700" size={16} />
                                             <input
@@ -739,6 +741,10 @@ export function AccountSettings() {
                                                 {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                             </button>
                                         </div>
+
+                                        {passwordData.new && (
+                                            <PasswordStrengthIndicator password={passwordData.new} />
+                                        )}
                                     </div>
 
                                     <div className="space-y-2">

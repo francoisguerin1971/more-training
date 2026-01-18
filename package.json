@@ -30,6 +30,7 @@
     "react-helmet-async": "^2.0.5",
     "react-hook-form": "^7.71.0",
     "react-is": "^19.2.3",
+    "react-phone-input-2": "^2.15.1",
     "react-router-dom": "^7.11.0",
     "recharts": "^3.6.0",
     "sonner": "^2.0.7",

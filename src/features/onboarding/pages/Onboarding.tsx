@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import {
     User, Activity, Target,
     ChevronRight, ChevronLeft,
-    ShieldCheck, Smartphone
+    ShieldCheck, Smartphone, RefreshCw
 } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/stores/authStore';
 import { useLanguage } from '@/shared/context/LanguageContext';
@@ -26,59 +26,90 @@ export function Onboarding() {
     const navigate = useNavigate();
     const { t } = useLanguage();
     const { currentUser, updateProfile, register, getInvitation } = useAuthStore();
-    const [step, setStep] = useState(1);
+
+    // Load from sessionStorage or default
+    const [step, setStep] = useState(() => {
+        const savedStep = sessionStorage.getItem('onboarding_step');
+        return savedStep ? parseInt(savedStep, 10) : 1;
+    });
+
     const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
     const [isInvited, setIsInvited] = useState(false);
     const [invitationData, setInvitationData] = useState<any>(null);
 
-    const [formData, setFormData] = useState({
-        // Step 1: Account
-        email: currentUser?.email || '',
-        password: '',
-        confirmPassword: '',
-        phone: '',
-        language: 'fr',
-        role: 'athlete', // 'athlete' (Moover), 'pro', 'orga'
+    const [formData, setFormData] = useState(() => {
+        const savedData = sessionStorage.getItem('onboarding_formData');
+        const defaultData = {
+            // Step 1: Account
+            email: currentUser?.email || '',
+            password: '',
+            confirmPassword: '',
+            phone: '',
+            language: 'fr',
+            role: 'athlete', // 'athlete' (Moover), 'pro', 'orga'
 
-        // Step 2: Personal (Simplified)
-        pseudo: '',
-        dob: '',
-        gender: '',
-        height: '',
-        weight: '',
-        city: '',
-        club: '',
-        avatar: null,
+            // Step 2: Personal (Simplified)
+            pseudo: '',
+            dob: '',
+            gender: '',
+            height: '',
+            weight: '',
+            city: '',
+            country: '',
+            club: '',
+            avatar: null,
 
-        // Step 3: Athletic/Pro Expertise
-        primarySport: 'running', // athlete
-        customSport: '',
-        level: 'beginner',
-        goal: 'fitness',
-        goalDetail: '',
-        specialties: [], // pro
-        coachingLanguages: '', // pro
-        bio: '', // pro
-        certifications: [], // pro
+            // Step 3: Athletic/Pro Expertise
+            primarySport: 'running', // athlete
+            customSport: '',
+            level: 'beginner',
+            goal: 'fitness',
+            goalDetail: '',
+            specialties: [], // pro
+            coachingLanguages: [], // pro
+            bio: '', // pro
+            certifications: [], // pro
 
-        // Step 4: Logistics/Pro Business
-        equipment: [], // athlete
-        availability: 60,
-        preferredTime: 'flexible',
-        location: 'both',
-        style: 'both',
-        devices: [],
-        availabilityDays: [],
-        timePerDay: {},
-        legalName: '', // pro
-        taxId: '', // pro
-        address: '', // pro
-        zip: '', // pro
+            // Step 4: Logistics/Pro Business
+            equipment: [], // athlete
+            availability: 60,
+            preferredTime: 'flexible',
+            location: 'both',
+            style: 'both',
+            devices: [],
+            availabilityDays: [],
+            timePerDay: {},
+            legalName: '', // pro
+            taxId: '', // pro
+            address: '', // pro
+            zip: '', // pro
+        };
+        return savedData ? JSON.parse(savedData) : defaultData;
     });
 
+    // Save state whenever it changes
     React.useEffect(() => {
+        sessionStorage.setItem('onboarding_step', step.toString());
+    }, [step]);
+
+    React.useEffect(() => {
+        sessionStorage.setItem('onboarding_formData', JSON.stringify(formData));
+    }, [formData]);
+
+    const [roleLocked, setRoleLocked] = useState(false);
+
+    React.useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+
+        // 1. Check for role parameter first
+        const roleParam = params.get('role');
+        if (roleParam && (roleParam === 'athlete' || roleParam === 'pro')) {
+            setFormData((prev: any) => ({ ...prev, role: roleParam }));
+            setRoleLocked(true);
+        }
+
+        // 2. Check for invitation
         const checkInvitation = async () => {
-            const params = new URLSearchParams(window.location.search);
             const inviteId = params.get('invite');
 
             if (inviteId) {
@@ -86,19 +117,24 @@ export function Onboarding() {
                 if (data) {
                     setIsInvited(true);
                     setInvitationData(data);
-                    setFormData(prev => ({
+                    setFormData((prev: any) => ({
                         ...prev,
                         email: data.email,
                         role: 'athlete', // Most invitations are for athletes
                         primarySport: data.sport?.toLowerCase() || prev.primarySport,
                         goalDetail: data.objective || prev.goalDetail,
-                        // Suggested Plan could be stored in metadata or profile_data later
                     }));
                 }
             }
         };
         checkInvitation();
     }, [getInvitation]);
+
+    React.useEffect(() => {
+        if (currentUser && step === 1) {
+            setStep(2);
+        }
+    }, [currentUser, step]);
 
     const [errors, setErrors] = useState({});
 
@@ -126,6 +162,7 @@ export function Onboarding() {
 
         if (s === 1) {
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            // Strict password requirement: 8+ chars, upper, lower, number, special
             const passRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
             if (!formData.email) newErrors.email = t('field_required');
@@ -141,6 +178,8 @@ export function Onboarding() {
             if (!formData.pseudo) newErrors.pseudo = t('field_required');
             else if (formData.pseudo.length < 3) newErrors.pseudo = t('pseudo_too_short');
             if (!formData.dob) newErrors.dob = t('field_required');
+            if (!formData.city) newErrors.city = t('field_required');
+            if (!formData.country) newErrors.country = t('field_required');
         }
         if (s === 3) {
             if (isPro) {
@@ -153,6 +192,8 @@ export function Onboarding() {
         if (s === 4) {
             if (isPro) {
                 if (!formData.legalName) newErrors.legalName = t('field_required');
+                if (!formData.city) newErrors.city = t('field_required');
+                if (!formData.country) newErrors.country = t('field_required');
             }
         }
         setErrors(newErrors);
@@ -162,22 +203,60 @@ export function Onboarding() {
     const handleNext = async () => {
         if (validateStep(step)) {
             if (step === 1) {
-                // Real Auth Registration on Step 1 with More Training Role
-                const { error } = await register(formData.email, formData.password, {
-                    full_name: formData.pseudo || '',
-                    role: formData.role
-                });
-                if (error) {
-                    setErrors({ ...errors, auth: error.message });
+                // If user is already logged in, skip registration
+                if (currentUser) {
+                    setStep(2);
                     return;
                 }
+
+                try {
+                    // Set step to 2 IMMEDIATELY after calling register to avoid double validation bug
+                    // But only if we are sure we want to move forward
+                    const { error } = await register(formData.email, formData.password, {
+                        full_name: formData.pseudo || '',
+                        role: formData.role
+                    });
+
+                    if (error) {
+                        let errorMsg = error.message;
+                        if (errorMsg === 'User already registered') {
+                            errorMsg = t('email_taken');
+                        } else if (errorMsg === 'Invalid login credentials') {
+                            errorMsg = t('invalid_credentials');
+                        } else if (errorMsg === 'Email not confirmed') {
+                            errorMsg = t('email_not_confirmed');
+                        }
+                        setErrors({ ...errors, auth: errorMsg });
+                        return;
+                    }
+
+                    // Force step 2 even if currentUser hasn't updated yet
+                    setStep(2);
+                } catch (err) {
+                    console.error('Registration failed:', err);
+                }
+                return;
             }
-            if (step < steps.length) setStep(step + 1);
-            else setIsVerifyingEmail(true);
+
+            if (step < steps.length) {
+                setStep(step + 1);
+            } else {
+                // Instead of blocking with verification screen, we complete the profile
+                // but keep the user informed or just proceed as requested
+                handleFinalComplete();
+            }
         }
     };
 
     const handleBack = () => setStep(prev => Math.max(prev - 1, 1));
+
+    const handleResetForm = () => {
+        if (window.confirm(t('reset_form') + '?')) {
+            sessionStorage.removeItem('onboarding_step');
+            sessionStorage.removeItem('onboarding_formData');
+            window.location.reload(); // Simplest way to reset all states
+        }
+    };
 
     const handleFinalComplete = async () => {
         try {
@@ -188,6 +267,8 @@ export function Onboarding() {
                     legalName: formData.legalName,
                     taxId: formData.taxId,
                     address: formData.address,
+                    city: formData.city,
+                    country: formData.country,
                     zip: formData.zip,
                     stripeConnected: false
                 },
@@ -216,13 +297,18 @@ export function Onboarding() {
                 full_name: formData.pseudo || currentUser?.full_name || '',
                 profile_data: profileData,
                 onboarded: true,
+                role: formData.role
             });
 
             if (error) {
                 logger.error('Profile update error:', error);
-                setErrors({ submit: 'Erreur lors de la finalisation du profil.' });
+                setErrors({ submit: t('error_profile_update') });
                 return;
             }
+
+            // Clear session storage on success
+            sessionStorage.removeItem('onboarding_step');
+            sessionStorage.removeItem('onboarding_formData');
 
             // Navigate to dashboard on success
             navigate('/dashboard');
@@ -231,6 +317,11 @@ export function Onboarding() {
             setErrors({ submit: 'Une erreur inattendue s\'est produite.' });
         }
     };
+
+    // Redirect if already onboarded
+    if (currentUser?.onboarded) {
+        return <Navigate to="/dashboard" replace />;
+    }
 
     if (isVerifyingEmail) {
         return (
@@ -308,6 +399,7 @@ export function Onboarding() {
                                     errors={errors}
                                     isInvited={isInvited}
                                     invitationData={invitationData}
+                                    roleLocked={roleLocked}
                                 />
                             )}
                             {step === 2 && <StepPersonal formData={formData} setFormData={setFormData} errors={errors} />}
@@ -338,6 +430,15 @@ export function Onboarding() {
                             <ChevronLeft size={16} />
                             {t('back')}
                         </button>
+
+                        <button
+                            onClick={handleResetForm}
+                            className="flex items-center gap-2 px-4 py-2 border border-slate-800 rounded-xl text-slate-600 hover:text-rose-500 hover:border-rose-500/30 transition-all text-[9px] font-black uppercase tracking-widest"
+                        >
+                            <RefreshCw size={12} />
+                            {t('reset_form')}
+                        </button>
+
                         <button
                             onClick={handleNext}
                             aria-label={step === steps.length ? t('btn_complete_profile') : t('next')}

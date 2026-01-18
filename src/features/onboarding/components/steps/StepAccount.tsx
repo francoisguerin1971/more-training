@@ -1,7 +1,9 @@
 import React from 'react';
 import { useLanguage } from '@/shared/context/LanguageContext';
-import { Mail, Lock, Phone, UserCircle } from 'lucide-react';
+import { Mail, Lock, UserCircle, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/core/utils/cn';
+import { PhoneInput } from '@/shared/components/form/PhoneInput';
+import { PasswordStrengthIndicator } from '@/shared/components/form/PasswordStrengthIndicator';
 
 interface StepAccountProps {
     formData: any;
@@ -9,10 +11,13 @@ interface StepAccountProps {
     errors: any;
     isInvited?: boolean;
     invitationData?: any;
+    roleLocked?: boolean;
 }
 
-export function StepAccount({ formData, setFormData, errors, isInvited, invitationData }: StepAccountProps) {
+export function StepAccount({ formData, setFormData, errors, isInvited, invitationData, roleLocked }: StepAccountProps) {
     const { t } = useLanguage();
+    const [showPassword, setShowPassword] = React.useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData((prev: any) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -22,8 +27,9 @@ export function StepAccount({ formData, setFormData, errors, isInvited, invitati
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2 flex items-center">
                         {t('email_label')}
+                        <span className="text-rose-500 ml-1">*</span>
                     </label>
                     <div className="relative">
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
@@ -55,64 +61,75 @@ export function StepAccount({ formData, setFormData, errors, isInvited, invitati
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">
-                        {t('phone_label')}
-                    </label>
-                    <div className="relative">
-                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                        <input
-                            type="tel"
-                            name="phone"
-                            value={formData.phone}
-                            onChange={handleChange}
-                            placeholder="+33 6 12 34 56 78"
-                            className={cn(
-                                "w-full bg-slate-950/50 border rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none transition-all font-medium",
-                                errors.phone ? "border-rose-500/50 focus:border-rose-500" : "border-slate-800 focus:border-emerald-500"
-                            )}
-                        />
-                    </div>
-                    {errors.phone && <p className="text-[10px] text-rose-500 font-bold uppercase ml-2">{errors.phone}</p>}
+                    <PhoneInput
+                        value={formData.phone}
+                        onChange={(phone) => setFormData((prev: any) => ({ ...prev, phone }))}
+                        error={errors.phone}
+                        label={t('phone_label')}
+                        required
+                    />
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2 flex items-center">
                         {t('password_label')}
+                        <span className="text-rose-500 ml-1">*</span>
                     </label>
                     <div className="relative">
                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                         <input
-                            type="password"
+                            type={showPassword ? "text" : "password"}
                             name="password"
                             value={formData.password}
                             onChange={handleChange}
                             placeholder="••••••••"
                             className={cn(
-                                "w-full bg-slate-950/50 border rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none transition-all font-medium",
+                                "w-full bg-slate-950/50 border rounded-2xl pl-12 pr-12 py-4 text-white focus:outline-none transition-all font-medium",
                                 errors.password ? "border-rose-500/50 focus:border-rose-500" : "border-slate-800 focus:border-emerald-500"
                             )}
                         />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors p-1"
+                        >
+                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
                     </div>
                     {errors.password && <p className="text-[10px] text-rose-500 font-bold uppercase ml-2">{errors.password}</p>}
+
+                    {formData.password && (
+                        <div className="md:col-span-2">
+                            <PasswordStrengthIndicator password={formData.password} />
+                        </div>
+                    )}
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2 flex items-center">
                         {t('confirm_password_label')}
+                        <span className="text-rose-500 ml-1">*</span>
                     </label>
                     <div className="relative">
                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                         <input
-                            type="password"
+                            type={showConfirmPassword ? "text" : "password"}
                             name="confirmPassword"
                             value={formData.confirmPassword}
                             onChange={handleChange}
                             placeholder="••••••••"
                             className={cn(
-                                "w-full bg-slate-950/50 border rounded-2xl pl-12 pr-4 py-4 text-white focus:outline-none transition-all font-medium",
+                                "w-full bg-slate-950/50 border rounded-2xl pl-12 pr-12 py-4 text-white focus:outline-none transition-all font-medium",
                                 errors.confirmPassword ? "border-rose-500/50 focus:border-rose-500" : "border-slate-800 focus:border-emerald-500"
                             )}
                         />
+                        <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors p-1"
+                        >
+                            {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
                     </div>
                     {errors.confirmPassword && <p className="text-[10px] text-rose-500 font-bold uppercase ml-2">{errors.confirmPassword}</p>}
                 </div>
@@ -125,13 +142,13 @@ export function StepAccount({ formData, setFormData, errors, isInvited, invitati
                 <div className="grid grid-cols-2 gap-4">
                     <button
                         type="button"
-                        onClick={() => !isInvited && setFormData((prev: any) => ({ ...prev, role: 'athlete' }))}
+                        onClick={() => !isInvited && !roleLocked && setFormData((prev: any) => ({ ...prev, role: 'athlete' }))}
                         className={cn(
                             "flex flex-col items-center gap-4 p-6 rounded-[32px] border-2 transition-all duration-300",
                             formData.role === 'athlete'
                                 ? "bg-emerald-500/10 border-emerald-500 shadow-xl shadow-emerald-500/10"
                                 : "bg-slate-950/50 border-slate-800 hover:border-slate-700",
-                            isInvited && formData.role !== 'athlete' && "opacity-30 grayscale cursor-not-allowed"
+                            (isInvited || (roleLocked && formData.role !== 'athlete')) && "opacity-30 grayscale cursor-not-allowed"
                         )}
                     >
                         <UserCircle size={32} className={formData.role === 'athlete' ? "text-emerald-400" : "text-slate-500"} />
@@ -145,13 +162,13 @@ export function StepAccount({ formData, setFormData, errors, isInvited, invitati
 
                     <button
                         type="button"
-                        onClick={() => !isInvited && setFormData((prev: any) => ({ ...prev, role: 'pro' }))}
+                        onClick={() => !isInvited && !roleLocked && setFormData((prev: any) => ({ ...prev, role: 'pro' }))}
                         className={cn(
                             "flex flex-col items-center gap-4 p-6 rounded-[32px] border-2 transition-all duration-300",
                             formData.role === 'pro'
                                 ? "bg-indigo-500/10 border-indigo-500 shadow-xl shadow-indigo-500/10"
                                 : "bg-slate-950/50 border-slate-800 hover:border-slate-700",
-                            isInvited && formData.role !== 'pro' && "opacity-30 grayscale cursor-not-allowed"
+                            (isInvited || (roleLocked && formData.role !== 'pro')) && "opacity-30 grayscale cursor-not-allowed"
                         )}
                     >
                         <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center text-slate-950 font-black text-xs">P</div>

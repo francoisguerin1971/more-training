@@ -32,8 +32,9 @@ export function StepAthletic({ formData, setFormData, errors }: StepAthleticProp
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="space-y-4">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2 flex items-center">
                     {t('primary_sport_label')}
+                    <span className="text-rose-500 ml-1">*</span>
                 </label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {SPORTS.map((sport) => (

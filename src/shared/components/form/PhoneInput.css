@@ -1,0 +1,56 @@
+/* Overrides for react-phone-input-2 to match the theme */
+.react-tel-input .form-control {
+    background: transparent !important;
+    border-radius: 1rem !important;
+    font-size: 14px !important;
+    height: auto !important;
+}
+
+.react-tel-input .flag-dropdown {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 1rem 0 0 1rem !important;
+}
+
+.react-tel-input .flag-dropdown.open .selected-flag {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-radius: 1rem 0 0 0 !important;
+}
+
+.react-tel-input .selected-flag {
+    background: transparent !important;
+    width: 50px !important;
+    padding: 0 0 0 16px !important;
+}
+
+.react-tel-input .selected-flag:hover,
+.react-tel-input .selected-flag:focus {
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.react-tel-input .country-list {
+    background-color: #0f172a !important; /* slate-900 */
+    color: #f8fafc !important; /* slate-50 */
+    border: 1px solid #1e293b !important; /* slate-800 */
+    border-radius: 1rem !important;
+    margin-top: 8px !important;
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1) !important;
+}
+
+.react-tel-input .country-list .country:hover {
+    background-color: #1e293b !important; /* slate-800 */
+}
+
+.react-tel-input .country-list .country.highlight {
+    background-color: #1e293b !important; /* slate-800 */
+}
+
+.react-tel-input .country-list .country .dial-code {
+    color: #94a3b8 !important; /* slate-400 */
+}
+
+/* Mandatory asterisk style */
+.mandatory-star {
+    color: #f43f5e; /* rose-500 */
+    margin-left: 2px;
+}

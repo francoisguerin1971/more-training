@@ -1,31 +1,56 @@
-import React, { useState } from 'react';
-import { Phone } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
+import React from 'react';
+import ReactPhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
+import { cn } from '@/core/utils/cn';
 
-export function PhoneInput({ value, onChange, error, label, placeholder }) {
+// Ensure the styles are available
+import './PhoneInput.css';
+
+interface PhoneInputProps {
+    value: string;
+    onChange: (value: string) => void;
+    error?: string;
+    label?: string;
+    placeholder?: string;
+    required?: boolean;
+    className?: string;
+    country?: string;
+}
+
+export function PhoneInput({
+    value,
+    onChange,
+    error,
+    label,
+    placeholder,
+    required,
+    className,
+    country = 'fr'
+}: PhoneInputProps) {
     return (
-        <div className="flex flex-col gap-2">
+        <div className={cn("flex flex-col gap-2", className)}>
             {label && (
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-2 flex items-center">
                     {label}
+                    {required && <span className="text-rose-500 ml-1">*</span>}
                 </label>
             )}
-            <div className={cn(
-                "relative flex items-center bg-slate-900/50 border-2 rounded-2xl transition-all duration-300",
-                error ? "border-red-500/50" : "border-slate-800 focus-within:border-emerald-500/50"
-            )}>
-                <div className="pl-4 pr-2 text-slate-500 border-r border-slate-800">
-                    <Phone size={18} />
-                </div>
-                <input
-                    type="tel"
+            <div className="phone-input-container">
+                <ReactPhoneInput
+                    country={country}
                     value={value}
-                    onChange={(e) => onChange(e.target.value)}
+                    onChange={onChange}
                     placeholder={placeholder}
-                    className="w-full bg-transparent p-4 text-white placeholder:text-slate-600 focus:outline-none"
+                    containerClass="w-full"
+                    inputClass={cn(
+                        "w-full !bg-slate-950/50 !border !rounded-2xl !pl-16 !pr-4 !py-7 !text-white focus:!outline-none transition-all !font-medium !h-auto",
+                        error ? "!border-rose-500/50 focus:!border-rose-500" : "!border-slate-800 focus:!border-emerald-500"
+                    )}
+                    buttonClass="!bg-transparent !border-none !rounded-l-2xl !pl-4"
+                    dropdownClass="!bg-slate-900 !text-white !border-slate-800"
                 />
             </div>
-            {error && <span className="text-[10px] text-red-400 ml-1 font-bold italic">{error}</span>}
+            {error && <span className="text-[10px] text-rose-500 ml-2 font-bold uppercase">{error}</span>}
         </div>
     );
 }

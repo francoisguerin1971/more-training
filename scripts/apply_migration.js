@@ -1,7 +1,15 @@
 import pg from 'pg';
+import fs from 'fs';
+import path from 'path';
 const { Client } = pg;
 
-const connectionString = 'postgresql://postgres:5eiB6SOZlagu9c6Q@db.nnjjpczvmgoxupwfkluw.supabase.co:5432/postgres';
+// Helper to load .env manually (avoiding extra dependency)
+const envPath = path.resolve(process.cwd(), '.env');
+const env = fs.existsSync(envPath)
+    ? Object.fromEntries(fs.readFileSync(envPath, 'utf8').split('\n').filter(l => l.includes('=')).map(l => l.split('=')))
+    : {};
+
+const connectionString = env.DATABASE_URL || 'postgresql://postgres:5eiB6SOZlagu9c6Q@db.nnjjpczvmgoxupwfkluw.supabase.co:5432/postgres';
 
 const sql = `
 CREATE TABLE IF NOT EXISTS public.health_data (
@@ -154,10 +162,14 @@ END $$;
 `;
 
 async function runMigration() {
-    const client = new Client({ connectionString });
+    const isPooler = connectionString.includes('6543');
+    const client = new Client({
+        connectionString,
+        ssl: isPooler ? { rejectUnauthorized: false } : false
+    });
     try {
         await client.connect();
-        console.log('Connected to Supabase');
+        console.log(isPooler ? 'Connected to Supabase via Pooler (IPv4)' : 'Connected to Supabase direct (IPv6)');
         await client.query(sql);
         console.log('Migration applied successfully');
     } catch (err) {
