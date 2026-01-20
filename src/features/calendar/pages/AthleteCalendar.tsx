@@ -7,7 +7,8 @@ import { useTraining } from '@/features/planner/contexts/TrainingContext';
 import { useAuthStore } from '@/features/auth/stores/authStore';
 import {
     ChevronLeft, ChevronRight, Activity, Zap, Sparkles, Calendar as CalendarIcon, List,
-    Moon, Trophy, Plus, Mail, BookOpen, Clock, X, Bell, Edit, Trash2, Users, Target, Sun, CheckCircle, XCircle, Video
+    Moon, Trophy, Plus, Mail, BookOpen, Clock, X, Bell, Edit, Trash2, Users, Target, Sun, CheckCircle, XCircle, Video,
+    Cloud, CloudRain, CloudLightning, ShieldAlert
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis } from 'recharts';
@@ -54,9 +55,28 @@ export function AthleteCalendar() {
             workout: { icon: Zap, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30' },
             competition: { icon: Trophy, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30' },
             vacation: { icon: Sun, color: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/30' },
+            busy: { icon: ShieldAlert, color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/30' },
             other: { icon: CalendarIcon, color: 'text-slate-400', bg: 'bg-slate-500/10', border: 'border-slate-500/30' }
         };
         return configs[type] || configs.other;
+    };
+
+    // V4: Weather Simulation
+    const getWeatherIcon = (date: Date) => {
+        const day = date.getDate();
+        if (day % 4 === 0) return <CloudRain size={10} className="text-indigo-400" />;
+        if (day % 3 === 0) return <Cloud size={10} className="text-slate-400" />;
+        if (day % 5 === 0) return <CloudLightning size={10} className="text-amber-400" />;
+        return <Sun size={10} className="text-amber-400" />;
+    };
+
+    // V4: Data-Driven Compliance Logic
+    const getComplianceLevel = (plannedLoad: number, actualLoad?: number) => {
+        if (!actualLoad) return 'pending';
+        const ratio = actualLoad / plannedLoad;
+        if (ratio >= 0.9 && ratio <= 1.1) return 'high';
+        if (ratio >= 0.7) return 'moderate';
+        return 'low';
     };
 
     const { start: startDate, end: endDate } = getInterval(currentDate, viewMode);
@@ -215,9 +235,17 @@ export function AthleteCalendar() {
                                 </div>
                             )}
                             <div className={cn("flex justify-between items-start mb-1", isMonthStart && (viewMode === 'quarter' || viewMode === 'year') && "mt-5")}>
-                                <span className={cn("text-[8px] font-black uppercase tracking-tighter", isToday ? "text-emerald-400" : (isOnVacation ? "text-amber-500" : "text-slate-500"))}>
-                                    {format(day, 'EEE', { locale: currentLocale })}
-                                </span>
+                                <div className="flex flex-col items-center gap-1.5">
+                                    <span className={cn("text-[8px] font-black uppercase tracking-tighter", isToday ? "text-emerald-400" : (isOnVacation ? "text-amber-500" : "text-slate-500"))}>
+                                        {format(day, 'EEE', { locale: currentLocale })}
+                                    </span>
+                                    <div className="group/weather relative cursor-help">
+                                        {getWeatherIcon(day)}
+                                        <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-800 text-white text-[7px] font-black px-2 py-1 rounded opacity-0 group-hover/weather:opacity-100 transition-all uppercase tracking-widest whitespace-nowrap shadow-2xl z-50 pointer-events-none">
+                                            {t('weather_forecast')}
+                                        </span>
+                                    </div>
+                                </div>
                                 <div className="flex items-center gap-2">
                                     <button
                                         onClick={(e) => {
@@ -241,14 +269,30 @@ export function AthleteCalendar() {
                             <div className="flex-1 space-y-2 relative z-10">
                                 {dayWorkouts.map(workout => (
                                     <div key={workout.id} onClick={() => setSelectedSession(workout)} className={cn(
-                                        "p-2 rounded-xl text-[10px] font-bold border leading-tight transition-all cursor-pointer relative group/workout",
+                                        "p-2 rounded-xl text-[10px] font-bold border leading-tight transition-all cursor-pointer relative group/workout overflow-hidden",
                                         (workout.status === 'completed' || workout.status === 'COMPLETED') ? "bg-slate-950/50 border-emerald-500/20 text-emerald-400 hover:border-emerald-500/50" :
                                             workout.status === 'PENDING_ACCEPTANCE' ? "bg-amber-500/10 border-amber-500/30 text-amber-500 hover:border-amber-500/50 border-dashed" :
                                                 "bg-slate-950 border-indigo-500/20 text-indigo-300 hover:border-indigo-500/50"
                                     )}>
-                                        <div className="flex items-center gap-1 mb-1">
-                                            {(workout.status === 'completed' || workout.status === 'COMPLETED') ? <Zap size={8} className="text-emerald-400" /> : <Activity size={8} className={workout.status === 'PENDING_ACCEPTANCE' ? "text-amber-500" : "text-indigo-400"} />}
-                                            <span className="truncate uppercase text-[8px]">{workout.title}</span>
+                                        <div className="flex items-center justify-between gap-1 mb-1">
+                                            <div className="flex items-center gap-1 min-w-0">
+                                                {(workout.status === 'completed' || workout.status === 'COMPLETED') ? <Zap size={8} className="text-emerald-400" /> : <Activity size={8} className={workout.status === 'PENDING_ACCEPTANCE' ? "text-amber-500" : "text-indigo-400"} />}
+                                                <span className="truncate uppercase text-[8px]">{workout.title}</span>
+                                            </div>
+                                            {(workout.status === 'completed' || workout.status === 'COMPLETED') && (
+                                                <div className="flex gap-0.5 flex-shrink-0">
+                                                    {(() => {
+                                                        const compliance = getComplianceLevel(workout.plannedLoad || 400, workout.actualLoad);
+                                                        return (
+                                                            <>
+                                                                <div className={cn("w-1 h-1 rounded-full", compliance === 'high' ? "bg-emerald-500" : "bg-slate-700")} />
+                                                                <div className={cn("w-1 h-1 rounded-full", compliance === 'moderate' ? "bg-amber-500" : "bg-slate-700")} />
+                                                                <div className={cn("w-1 h-1 rounded-full", compliance === 'low' ? "bg-rose-500" : "bg-slate-700")} />
+                                                            </>
+                                                        );
+                                                    })()}
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="flex items-center justify-between gap-1">
                                             {(workout.actualLoad || workout.plannedLoad) && <span className="opacity-60 text-[7px]">{workout.actualLoad || workout.plannedLoad} {t('ua')}</span>}
@@ -370,6 +414,7 @@ export function AthleteCalendar() {
                                         <option value="competition">{t('type_competition')}</option>
                                         <option value="rdv">{t('type_rdv')}</option>
                                         <option value="vacation">{t('type_vacation')}</option>
+                                        <option value="busy">{t('athlete_unavailable')}</option>
                                         <option value="other">{t('type_other')}</option>
                                     </select>
                                 </div>

@@ -47,7 +47,7 @@ export function CoachPricing() {
     const packages = offerings.filter(o => o.type === 'PACKAGE');
     const hourlyRates = offerings.filter(o => o.type === 'HOURLY');
 
-    const handleOpenModal = (offering?: any) => {
+    const handleOpenModal = (offering?: any, initialType: 'PACKAGE' | 'HOURLY' = 'PACKAGE') => {
         if (offering) {
             setEditingOffering(offering);
             setFormData({
@@ -67,7 +67,7 @@ export function CoachPricing() {
                 description: '',
                 price_cents: 0,
                 billing_interval: 'MONTH',
-                type: 'PACKAGE',
+                type: initialType,
                 features: [],
                 is_active: true,
                 is_recommended: false
@@ -147,13 +147,20 @@ export function CoachPricing() {
                         {t('pricing_subtitle')}
                     </p>
                 </div>
-                <div className="flex gap-4">
+                <div className="flex gap-2">
                     <button
-                        onClick={() => handleOpenModal()}
-                        disabled={packages.length >= 10 && hourlyRates.length >= 3}
-                        className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all shadow-xl shadow-emerald-500/10"
+                        onClick={() => handleOpenModal(undefined, 'PACKAGE')}
+                        disabled={packages.length >= 10}
+                        className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 px-4 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all shadow-xl shadow-emerald-500/10"
                     >
                         <Plus size={16} /> {t('add_offering_btn')}
+                    </button>
+                    <button
+                        onClick={() => handleOpenModal(undefined, 'HOURLY')}
+                        disabled={hourlyRates.length >= 3}
+                        className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all shadow-xl shadow-indigo-500/10"
+                    >
+                        <Clock size={16} /> {t('hourly_rate_add', 'Ajouter Tarif Horaire')}
                     </button>
                 </div>
             </div>

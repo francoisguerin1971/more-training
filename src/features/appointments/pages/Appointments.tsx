@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/shared/components/ui/Card';
-import { Video, MapPin, ChevronRight, CheckCircle2, AlertTriangle, CreditCard, MessageSquare, ChevronLeft, Calendar as CalendarIcon, Clock, X, Info } from 'lucide-react';
+import { Video, MapPin, ChevronRight, CheckCircle2, AlertTriangle, CreditCard, MessageSquare, ChevronLeft, Calendar as CalendarIcon, Clock, X, Info, Sun, Cloud, CloudRain, CloudLightning } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/stores/authStore';
 import { useLanguage } from '@/shared/context/LanguageContext';
 import { cn } from '@/shared/lib/utils';
@@ -81,6 +81,15 @@ export function Appointments() {
         if (bookingSettings.modes.length > 0 && !bookingSettings.modes.includes(sessionType)) {
             setSessionType(bookingSettings.modes[0]);
         }
+    };
+
+    // V4: Weather Simulation
+    const getWeatherIcon = (date: Date) => {
+        const day = date.getDate();
+        if (day % 4 === 0) return <CloudRain size={10} className="text-indigo-400" />;
+        if (day % 3 === 0) return <Cloud size={10} className="text-slate-400" />;
+        if (day % 5 === 0) return <CloudLightning size={10} className="text-amber-400" />;
+        return <Sun size={10} className="text-amber-400" />;
     };
 
     const handleConfirmBooking = () => {
@@ -223,7 +232,13 @@ export function Appointments() {
                                         </span>
 
                                         {isAvailable && (
-                                            <div className="self-end mr-1 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <div className="flex flex-col items-end gap-1 mr-1 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <div className="group/weather relative cursor-help">
+                                                    {getWeatherIcon(day)}
+                                                    <span className="absolute -bottom-8 right-0 bg-slate-900 border border-slate-800 text-white text-[7px] font-black px-2 py-1 rounded opacity-0 group-hover/weather:opacity-100 transition-all uppercase tracking-widest whitespace-nowrap shadow-2xl z-50 pointer-events-none">
+                                                        {t('weather_forecast')}
+                                                    </span>
+                                                </div>
                                                 <div className="bg-emerald-500/20 text-emerald-400 text-[8px] font-black px-2 py-0.5 rounded-md uppercase border border-emerald-500/30">
                                                     Dispo
                                                 </div>

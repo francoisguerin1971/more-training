@@ -4,7 +4,8 @@ import {
     Droplets, Flame, Heart, Info, Moon, RefreshCw,
     Target, Timer, Trophy, Users, Zap, Wind, PieChart,
     Battery, Watch, TrendingUp, Box, CalendarDays, ShieldCheck,
-    BrainCircuit, Cloud, Award, MessageSquare, X, BookOpen
+    BrainCircuit, Cloud, Award, MessageSquare, X, BookOpen,
+    Sun, CloudRain, CloudLightning, UserPlus
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, isSameDay, startOfToday } from 'date-fns';
@@ -40,7 +41,7 @@ export function AthleteDashboard() {
         }
     }, [language]);
     const { workouts, updateWorkout, fetchWorkouts, loading: workoutsLoading } = useTraining();
-    const { currentUser, getCoachesForAthlete, loading } = useAuthStore();
+    const { currentUser, getCoachesForAthlete, loading, setShowInviteModal } = useAuthStore();
 
     // State with proper types
     const [logDuration, setLogDuration] = useState<string>('');
@@ -168,6 +169,25 @@ export function AthleteDashboard() {
         });
     }, [currentLocale]);
 
+    // V4: Weather Simulation
+    const getWeatherIcon = (date: Date) => {
+        const d = new Date(date);
+        const day = d.getDate();
+        if (day % 4 === 0) return <CloudRain size={14} className="text-indigo-400" />;
+        if (day % 3 === 0) return <Cloud size={14} className="text-slate-400" />;
+        if (day % 5 === 0) return <CloudLightning size={14} className="text-amber-400" />;
+        return <Sun size={14} className="text-amber-400" />;
+    };
+
+    // V4: Data-Driven Compliance Logic
+    const getComplianceLevel = (plannedLoad: number, actualLoad?: number) => {
+        if (!actualLoad) return 'pending';
+        const ratio = actualLoad / plannedLoad;
+        if (ratio >= 0.9 && ratio <= 1.1) return 'high';
+        if (ratio >= 0.7) return 'moderate';
+        return 'low';
+    };
+
     const last7Days = Array.from({ length: 7 }).map((_, i) => {
         const d = new Date();
         d.setDate(d.getDate() - (6 - i));
@@ -192,6 +212,7 @@ export function AthleteDashboard() {
     const futureSessions = sessions.filter(s => s.date && new Date(s.date) > today).slice(0, 4);
     const upcomingWorkouts = futureSessions.length > 0 ? futureSessions.map(s => ({
         date: format(new Date(s.date), 'EEE, MMM dd', { locale: currentLocale }),
+        rawDate: new Date(s.date),
         title: s.title,
         type: s.type || 'Activity',
         load: s.plannedLoad || 0,
@@ -199,10 +220,10 @@ export function AthleteDashboard() {
         icon: s.type === 'ENDURANCE' ? Activity : Zap,
         color: s.type === 'ENDURANCE' ? 'emerald' : 'amber'
     })) : [
-        { date: t('tomorrow'), title: t('sport_running'), type: 'Running', load: 420, duration: `60 ${t('minutes_suffix') || 'min'}`, icon: Activity, color: 'emerald' },
-        { date: format(new Date(2025, 0, 3), 'EEE, MMM dd', { locale: currentLocale }), title: t('sport_gym'), type: 'Gym', load: 280, duration: `45 ${t('minutes_suffix') || 'min'}`, icon: Zap, color: 'amber' },
-        { date: format(new Date(2025, 0, 4), 'EEE, MMM dd', { locale: currentLocale }), title: t('sport_swimming'), type: 'Swimming', load: 180, duration: `30 ${t('minutes_suffix') || 'min'}`, icon: Droplets, color: 'blue' },
-        { date: format(new Date(2025, 0, 5), 'EEE, MMM dd', { locale: currentLocale }), title: t('sport_running'), type: 'Running', load: 550, duration: `75 ${t('minutes_suffix') || 'min'}`, icon: Flame, color: 'rose' },
+        { date: t('tomorrow'), rawDate: new Date(today.getTime() + 86400000), title: t('sport_running'), type: 'Running', load: 420, duration: `60 ${t('minutes_suffix') || 'min'}`, icon: Activity, color: 'emerald' },
+        { date: format(new Date(2025, 3, 16), 'EEE, MMM dd', { locale: currentLocale }), rawDate: new Date(2025, 3, 16), title: t('sport_gym'), type: 'Gym', load: 280, duration: `45 ${t('minutes_suffix') || 'min'}`, icon: Zap, color: 'amber' },
+        { date: format(new Date(2025, 3, 17), 'EEE, MMM dd', { locale: currentLocale }), rawDate: new Date(2025, 3, 17), title: t('sport_swimming'), type: 'Swimming', load: 180, duration: `30 ${t('minutes_suffix') || 'min'}`, icon: Droplets, color: 'blue' },
+        { date: format(new Date(2025, 3, 18), 'EEE, MMM dd', { locale: currentLocale }), rawDate: new Date(2025, 3, 18), title: t('sport_running'), type: 'Running', load: 550, duration: `75 ${t('minutes_suffix') || 'min'}`, icon: Flame, color: 'rose' },
     ];
 
     // Mock training zones distribution (percentage of time in each zone)
@@ -363,14 +384,23 @@ export function AthleteDashboard() {
                     </div>
                 </div>
 
-                {!activePlan && (
+                <div className="flex gap-4">
                     <button
-                        onClick={() => setShowFreeConsultation(true)}
-                        className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-600/20 flex items-center gap-2 group border border-indigo-400/30"
+                        onClick={() => setShowInviteModal(true)}
+                        className="bg-slate-900 text-emerald-400 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all border border-emerald-500/20 flex items-center gap-2 group"
                     >
-                        <Users size={16} className="group-hover:scale-110 transition-transform" /> {t('consult_coach_free')}
+                        <UserPlus size={16} className="group-hover:scale-110 transition-transform" /> {t('invite_partners')}
                     </button>
-                )}
+
+                    {!activePlan && (
+                        <button
+                            onClick={() => setShowFreeConsultation(true)}
+                            className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-600/20 flex items-center gap-2 group border border-indigo-400/30"
+                        >
+                            <Users size={16} className="group-hover:scale-110 transition-transform" /> {t('consult_coach_free')}
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* LEVEL 1: THE ACTION (Today's Session & Fused Feedback) - MOVED TO TOP */}
@@ -381,9 +411,17 @@ export function AthleteDashboard() {
 
                         <CardHeader
                             title={t('today_session_title')}
-                            subtitle={`${format(today, 'EEEE, dd MMMM')} • ${todaysSession?.duration || 0} min`}
+                            subtitle={
+                                <div className="flex items-center gap-3">
+                                    <span>{format(today, 'EEEE, dd MMMM')} • {todaysSession?.duration || 0} min</span>
+                                    <div className="flex items-center gap-1 bg-slate-900/50 px-2 py-0.5 rounded-full border border-slate-800">
+                                        {getWeatherIcon(today)}
+                                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{t('weather_forecast')}</span>
+                                    </div>
+                                </div>
+                            }
                             icon={<Timer className="text-emerald-400" size={24} />}
-                            action={<InfoTooltip text={t('info_today_session')} action={t('action_today_session')} />}
+                            action={<InfoTooltip content={t('info_today_session') + "\n\n" + t('action_today_session')} />}
                         />
 
                         {todaysSession ? (
@@ -476,8 +514,20 @@ export function AthleteDashboard() {
 
                                         {todaysSession.status === 'COMPLETED' ? (
                                             <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6 animate-in zoom-in duration-500">
-                                                <div className="w-24 h-24 bg-emerald-500 rounded-[2rem] flex items-center justify-center text-slate-950 shadow-2xl shadow-emerald-500/40">
+                                                <div className="w-24 h-24 bg-emerald-500 rounded-[2rem] flex items-center justify-center text-slate-950 shadow-2xl shadow-emerald-500/40 relative">
                                                     <Award size={40} />
+                                                    <div className="absolute -bottom-2 flex gap-1 bg-slate-950 px-3 py-1.5 rounded-full border border-emerald-500/30">
+                                                        {(() => {
+                                                            const compliance = getComplianceLevel(todaysSession.plannedLoad || 400, todaysSession.actualLoad);
+                                                            return (
+                                                                <>
+                                                                    <div className={cn("w-2 h-2 rounded-full", compliance === 'high' ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-slate-800")} />
+                                                                    <div className={cn("w-2 h-2 rounded-full", compliance === 'moderate' ? "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" : "bg-slate-800")} />
+                                                                    <div className={cn("w-2 h-2 rounded-full", compliance === 'low' ? "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]" : "bg-slate-800")} />
+                                                                </>
+                                                            );
+                                                        })()}
+                                                    </div>
                                                 </div>
                                                 <div>
                                                     <h3 className="text-2xl font-black text-white uppercase">{t('session_logged')}</h3>
@@ -599,7 +649,10 @@ export function AthleteDashboard() {
                                             <workout.icon size={20} />
                                         </div>
                                         <div>
-                                            <p className="text-white font-black uppercase text-[10px] tracking-tight truncate max-w-[120px]">{workout.title}</p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-white font-black uppercase text-[10px] tracking-tight truncate max-w-[120px]">{workout.title}</p>
+                                                {getWeatherIcon(workout.rawDate)}
+                                            </div>
                                             <p className="text-[9px] text-slate-500 font-bold uppercase mt-0.5">{workout.date}</p>
                                         </div>
                                     </div>
@@ -648,7 +701,7 @@ export function AthleteDashboard() {
                                         <span className="text-[9px] text-slate-400 font-black uppercase tracking-wider">{t('effort')}</span>
                                     </div>
                                 </div>
-                                <InfoTooltip text={t('info_macro_cycle')} action={t('action_macro_cycle')} />
+                                <InfoTooltip content={t('info_macro_cycle') + "\n\n" + t('action_macro_cycle')} />
                             </div>
                         }
                     />
@@ -765,7 +818,7 @@ export function AthleteDashboard() {
                         title={t('weekly_compliance')}
                         subtitle={t('weekly_compliance_desc')}
                         icon={<Activity className="text-emerald-400" size={20} />}
-                        action={<InfoTooltip text={t('info_weekly_compliance')} action={t('action_weekly_compliance')} />}
+                        action={<InfoTooltip content={t('info_weekly_compliance') + "\n\n" + t('action_weekly_compliance')} />}
                     />
                     <div className="p-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="p-4 bg-slate-950/50 border border-slate-800 rounded-2xl">
@@ -792,7 +845,7 @@ export function AthleteDashboard() {
                         title={t('time_distribution')}
                         subtitle={t('time_distribution_desc')}
                         icon={<PieChart className="text-pink-400" size={20} />}
-                        action={<InfoTooltip text={t('info_time_distribution')} action={t('action_time_distribution')} />}
+                        action={<InfoTooltip content={t('info_time_distribution') + "\n\n" + t('action_time_distribution')} />}
                     />
                     <div className="p-6">
                         <div className="grid grid-cols-5 gap-2 mb-4">
@@ -824,7 +877,7 @@ export function AthleteDashboard() {
                         title={t('progress_chart_title')}
                         subtitle={t('progress_evolution_desc')}
                         icon={<TrendingUp className="text-cyan-400" size={20} />}
-                        action={<InfoTooltip text={t('info_performance_metrics')} action={t('action_performance_metrics')} />}
+                        action={<InfoTooltip content={t('info_performance_metrics') + "\n\n" + t('action_performance_metrics')} />}
                     />
 
                     {!hasConnectedDevice ? (
@@ -897,7 +950,7 @@ export function AthleteDashboard() {
                                 <div className="flex justify-between items-end">
                                     <div className="flex items-center gap-1">
                                         <p className="text-[10px] font-black text-white uppercase tracking-tight">{record.label}</p>
-                                        {record.help && <InfoTooltip text={record.help} />}
+                                        {record.help && <InfoTooltip content={record.help} />}
                                     </div>
                                     <div className="text-right">
                                         <span className="text-[8px] text-slate-500 font-bold uppercase mr-2">{t('best')}: {record.best}</span>

@@ -5,6 +5,7 @@ import { useAuthStore } from '@/features/auth/stores/authStore';
 import { SandboxBanner } from '@/shared/components/common/SandboxBanner';
 import { Chatbot } from '@/shared/components/common/Chatbot';
 import { TrainingProvider } from '@/features/planner/contexts/TrainingContext';
+import { GlobalInviteModal } from '@/shared/components/common/GlobalInviteModal';
 import { Toaster } from 'sonner';
 
 // Lazy loaded components from features
@@ -28,6 +29,7 @@ const AccountSettings = lazy(() => import('@/features/settings/pages/AccountSett
 const Appointments = lazy(() => import('@/features/appointments/pages/Appointments').then(m => ({ default: m.Appointments })));
 const AthleteBilling = lazy(() => import('@/features/billing/pages/AthleteBilling').then(m => ({ default: m.AthleteBilling })));
 const ResourcesLibrary = lazy(() => import('@/features/resources/pages/ResourcesLibrary').then(m => ({ default: m.ResourcesLibrary })));
+const PortalSelection = lazy(() => import('@/features/auth/pages/PortalSelection').then(m => ({ default: m.PortalSelection })));
 
 // Loading Fallback Component
 const PageLoading = () => (
@@ -45,7 +47,6 @@ const ProtectedLayout = ({ user, logout }: { user: any; logout: () => void }) =>
     <div className="flex flex-col min-h-screen bg-slate-950">
       <SandboxBanner status={user.status} />
       <Layout
-        role={user.role}
         onLogout={logout}
       >
         <Outlet />
@@ -55,8 +56,11 @@ const ProtectedLayout = ({ user, logout }: { user: any; logout: () => void }) =>
   );
 };
 
+const CoachProfileEditor = lazy(() => import('@/features/marketplace/pages/CoachProfileEditor').then(m => ({ default: m.CoachProfileEditor })));
+const InvoicesPage = lazy(() => import('@/features/billing/pages/Invoices').then(m => ({ default: m.Invoices })));
+
 function App() {
-  const { currentUser, loading, init, logout } = useAuthStore();
+  const { currentUser, loading, init, logout, isDualRole } = useAuthStore();
 
   useEffect(() => {
     init();
@@ -70,6 +74,7 @@ function App() {
     <BrowserRouter>
       <Toaster richColors position="top-right" />
       <TrainingProvider>
+        <GlobalInviteModal />
         <Suspense fallback={<PageLoading />}>
           <Routes>
             {/* Common Onboarding - Stable across auth states */}
@@ -84,43 +89,50 @@ function App() {
                 <Route path="*" element={<Navigate to="/onboarding" replace />} />
               </>
             ) : (
-              /* Protected Routes */
-              <Route element={<ProtectedLayout user={currentUser} logout={logout} />}>
-                {/* Dashboard Choice */}
-                <Route path="/dashboard" element={
-                  currentUser.role === 'pro' ? <CoachDashboard /> : <AthleteDashboard />
-                } />
+              <>
+                {/* Portal Selection for Dual Roles */}
+                <Route path="/portal" element={<PortalSelection />} />
 
-                {/* Common Views */}
-                <Route path="/calendar" element={
-                  currentUser.role === 'pro' ? <CoachCalendar /> : <AthleteCalendar />
-                } />
-                <Route path="/messages" element={<Messages />} />
-                <Route path="/settings" element={<AccountSettings />} />
+                {/* Protected Routes */}
+                <Route element={<ProtectedLayout user={currentUser} logout={logout} />}>
+                  {/* Dashboard Choice */}
+                  <Route path="/dashboard" element={
+                    currentUser.role === 'pro' ? <CoachDashboard /> : <AthleteDashboard />
+                  } />
 
-                {/* Pro Specific */}
-                {currentUser.role === 'pro' && (
-                  <>
-                    <Route path="/athletes" element={<AthletesList />} />
-                    <Route path="/pricing" element={<CoachPricing />} />
-                    <Route path="/invoices" element={<Invoices />} />
-                  </>
-                )}
+                  {/* Common Views */}
+                  <Route path="/calendar" element={
+                    currentUser.role === 'pro' ? <CoachCalendar /> : <AthleteCalendar />
+                  } />
+                  <Route path="/messages" element={<Messages />} />
+                  <Route path="/settings" element={<AccountSettings />} />
 
-                {/* Athlete / Feature Specific */}
-                <Route path="/ai-planner" element={<AIPlanGenerator />} />
-                <Route path="/manual-builder" element={<ManualPlanBuilder />} />
-                <Route path="/integrations" element={<Integrations />} />
-                <Route path="/live" element={<LiveConnection onClose={() => window.history.back()} />} />
-                <Route path="/appointments" element={<Appointments />} />
-                <Route path="/billing" element={<AthleteBilling />} />
-                <Route path="/resources" element={<ResourcesLibrary />} />
+                  {/* Pro Specific */}
 
-                {/* Redirect dashboard by default */}
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                <Route path="/login" element={<Navigate to="/dashboard" replace />} />
-                <Route path="*" element={<Navigate to="/dashboard" replace />} />
-              </Route>
+                  {currentUser.role === 'pro' && (
+                    <>
+                      <Route path="/athletes" element={<AthletesList />} />
+                      <Route path="/pricing" element={<CoachPricing />} />
+                      <Route path="/invoices" element={<InvoicesPage />} />
+                      <Route path="/my-profile" element={<CoachProfileEditor />} />
+                    </>
+                  )}
+
+                  {/* Athlete / Feature Specific */}
+                  <Route path="/ai-planner" element={<AIPlanGenerator />} />
+                  <Route path="/manual-builder" element={<ManualPlanBuilder />} />
+                  <Route path="/integrations" element={<Integrations />} />
+                  <Route path="/live" element={<LiveConnection onClose={() => window.history.back()} />} />
+                  <Route path="/appointments" element={<Appointments />} />
+                  <Route path="/billing" element={<AthleteBilling />} />
+                  <Route path="/resources" element={<ResourcesLibrary />} />
+
+                  {/* Redirect dashboard by default */}
+                  <Route path="/" element={<Navigate to={isDualRole ? "/portal" : "/dashboard"} replace />} />
+                  <Route path="/login" element={<Navigate to={isDualRole ? "/portal" : "/dashboard"} replace />} />
+                  <Route path="*" element={<Navigate to={isDualRole ? "/portal" : "/dashboard"} replace />} />
+                </Route>
+              </>
             )}
           </Routes>
         </Suspense>

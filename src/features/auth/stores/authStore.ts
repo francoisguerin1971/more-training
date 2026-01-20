@@ -12,9 +12,10 @@ interface AuthActions {
     updateProfile: (updates: Partial<UserProfile>) => Promise<{ data: any; error: any }>;
     getAthletesForCoach: (coachId: string) => Promise<any[]>;
     getCoachesForAthlete: (athleteId: string) => Promise<any[]>;
-    inviteAthlete: (invite: { email: string; name?: string; sport?: string; suggestedPlan?: string }) => Promise<{ data: any; error: any }>;
+    inviteAthlete: (invite: { email: string; first_name?: string; last_name?: string; sport?: string; role?: string; suggestedPlan?: string }) => Promise<{ data: any; error: any }>;
     deleteAccount: (userId: string) => Promise<void>;
     uploadAvatar: (file: File) => Promise<{ path: string; error: any }>;
+    setShowInviteModal: (show: boolean) => void;
     // MFA Actions
     enrollMFA: () => Promise<{ data: any; error: any }>;
     verifyMFA: (factorId: string, challengeId: string, code: string) => Promise<{ data: any; error: any }>;
@@ -33,6 +34,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     currentUser: null,
     loading: true,
     initialized: false,
+    showInviteModal: false,
+    isDualRole: false,
 
     init: async () => {
         if (get().initialized) return;
@@ -79,7 +82,29 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     },
 
     login: async (email: string, password: string) => {
-        if (import.meta.env.MODE === 'development' && import.meta.env.VITE_DEMO_MODE === 'true') {
+        const isDev = import.meta.env.DEV || import.meta.env.MODE === 'development';
+        const isDemo = import.meta.env.VITE_DEMO_MODE === 'true';
+
+        // Dual Role Simulation
+        if (email === 'admin@moretraining.com' || email === 'both@moretraining.com') {
+            set({
+                currentUser: {
+                    id: 'admin-dual-id',
+                    email: email,
+                    role: 'pro', // Default to Pro, but allow switch
+                    status: 'active',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    first_name: "Admin",
+                    last_name: "Dual"
+                },
+                isDualRole: true,
+                loading: false
+            });
+            return true;
+        }
+
+        if (isDev || isDemo) {
             if (email === 'test@moretraining.com' && password === 'Moov2026!') {
                 set({
                     currentUser: {
@@ -89,6 +114,22 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
                         status: 'active',
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString()
+                    },
+                    loading: false
+                });
+                return true;
+            }
+            if (email === 'athlete@moretraining.com' && password === 'Moov2026!') {
+                set({
+                    currentUser: {
+                        id: 'demo-athlete-id',
+                        email: 'athlete@moretraining.com',
+                        role: 'athlete',
+                        status: 'active',
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString(),
+                        first_name: 'Hugo',
+                        last_name: 'Test'
                     },
                     loading: false
                 });
@@ -111,7 +152,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
     logout: async () => {
         await supabase.auth.signOut();
-        set({ currentUser: null });
+        set({ currentUser: null, isDualRole: false });
     },
 
     register: async (email: string, password: string, metadata: any = {}) => {
@@ -272,9 +313,25 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
             return [];
         }
     },
-    inviteAthlete: async (invite: { email: string; name?: string; sport?: string; suggestedPlan?: string }): Promise<{ data: any; error: any }> => {
+    inviteAthlete: async (invite: { email: string; first_name?: string; last_name?: string; sport?: string; role?: string; suggestedPlan?: string }): Promise<{ data: any; error: any }> => {
         const { currentUser } = get();
         if (!currentUser) return { data: null, error: 'No user' };
+
+        // Mock for testing, demo mode or unconfigured Supabase
+        const isDev = import.meta.env.DEV;
+        const isSupabaseConfigured = import.meta.env.VITE_SUPABASE_URL && !import.meta.env.VITE_SUPABASE_URL.includes('placeholder');
+
+        if (isDev || currentUser.id === 'demo-pro-id' || import.meta.env.VITE_DEMO_MODE === 'true' || !isSupabaseConfigured) {
+            console.log('[INVITE SIMULATION] Processed for:', invite.email);
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    resolve({
+                        data: { id: 'mock-invite-' + Date.now(), ...invite },
+                        error: null
+                    });
+                }, 800);
+            });
+        }
 
         try {
             const { data, error } = await supabase
@@ -282,8 +339,10 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
                 .insert([{
                     coach_id: currentUser.id,
                     email: invite.email,
-                    name: invite.name,
+                    first_name: invite.first_name,
+                    last_name: invite.last_name,
                     sport: invite.sport,
+                    role: invite.role || 'athlete',
                     suggested_plan: invite.suggestedPlan
                 }])
                 .select()
@@ -462,6 +521,17 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         }
     },
     getCoachOfferings: async (coachId: string) => {
+        // Mock for demo mode or unconfigured Supabase
+        const isDev = import.meta.env.DEV;
+        const isSupabaseConfigured = import.meta.env.VITE_SUPABASE_URL && !import.meta.env.VITE_SUPABASE_URL.includes('placeholder');
+        if (isDev || coachId === 'demo-pro-id' || import.meta.env.VITE_DEMO_MODE === 'true' || !isSupabaseConfigured) {
+            return [
+                { id: '1', name: 'Elite Performance', price_cents: 9900, type: 'PACKAGE', duration_months: 1 },
+                { id: '2', name: 'Standard Training', price_cents: 4900, type: 'PACKAGE', duration_months: 1 },
+                { id: '3', name: 'Customized Routine', price_cents: 2900, type: 'PACKAGE', duration_months: 1 }
+            ];
+        }
+
         try {
             const { data, error } = await supabase
                 .from('coach_offerings')
@@ -568,5 +638,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         } catch (err: any) {
             return { error: err };
         }
-    }
+    },
+    setShowInviteModal: (show: boolean) => set({ showInviteModal: show })
 }));

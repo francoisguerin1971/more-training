@@ -1,5 +1,6 @@
 export type UserRole = 'pro' | 'athlete';
 
+
 export interface UserProfile {
     id: string;
     email: string;
@@ -22,4 +23,6 @@ export interface AuthState {
     currentUser: UserProfile | null;
     loading: boolean;
     initialized: boolean;
+    showInviteModal: boolean;
+    isDualRole?: boolean;
 }

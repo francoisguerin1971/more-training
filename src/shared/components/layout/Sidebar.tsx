@@ -2,7 +2,8 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
     LogOut, BrainCircuit, LayoutGrid, LayoutDashboard, Users, Calendar, Settings,
-    Watch, Video, ChevronDown, MessageSquare, FileText, CreditCard, BookOpen
+    Watch, Video, ChevronDown, MessageSquare, FileText, CreditCard, BookOpen,
+    List, Clock, UserPlus, Globe
 } from 'lucide-react';
 import { cn } from '@/core/utils/cn';
 import { useLanguage } from '@/shared/context/LanguageContext';
@@ -15,7 +16,7 @@ interface SidebarProps {
 
 export function Sidebar({ onLogout }: SidebarProps) {
     const { t } = useLanguage();
-    const { currentUser } = useAuthStore();
+    const { currentUser, setShowInviteModal } = useAuthStore();
     const { messages = [] } = useMessages();
 
     if (!currentUser) return null;
@@ -25,21 +26,22 @@ export function Sidebar({ onLogout }: SidebarProps) {
     const proLinks = [
         { path: '/dashboard', label: t('dashboard'), icon: LayoutDashboard },
         { path: '/athletes', label: t('athletes'), icon: Users },
-        { path: '/calendar', label: t('planner'), icon: Calendar },
+        { path: '/calendar', label: t('planner'), icon: LayoutGrid },
         { path: '/ai-planner', label: t('ai_planner_title'), icon: BrainCircuit },
-        { path: '/manual-builder', label: t('manual_studio'), icon: LayoutGrid },
+        { path: '/manual-builder', label: t('manual_studio'), icon: List },
         { path: '/integrations', label: t('integrations'), icon: Watch },
         { path: '/appointments', label: t('weekly_meetings'), icon: Calendar },
         { path: '/messages', label: t('messages'), icon: MessageSquare, badge: unreadCount },
-        { path: '/invoices', label: 'Facturation', icon: FileText },
+        { path: '/invoices', label: 'Facturation', icon: CreditCard },
         { path: '/resources', label: t('library'), icon: BookOpen },
+        { path: '/my-profile', label: t('my_public_profile', 'Mon Profil Public'), icon: Globe },
     ];
 
     const athleteLinks = [
         { path: '/dashboard', label: t('my_training'), icon: LayoutDashboard },
         { path: '/calendar', label: t('schedule'), icon: Calendar },
         { path: '/integrations', label: t('integrations'), icon: Watch },
-        { path: '/appointments', label: t('weekly_meetings'), icon: Calendar },
+        { path: '/appointments', label: t('weekly_meetings'), icon: Clock },
         { path: '/messages', label: t('messages'), icon: MessageSquare, badge: unreadCount },
         { path: '/billing', label: t('my_subscription'), icon: CreditCard },
         { path: '/resources', label: t('library'), icon: BookOpen },
@@ -108,6 +110,13 @@ export function Sidebar({ onLogout }: SidebarProps) {
             </nav>
 
             <div className="p-4 border-t border-slate-800 space-y-4">
+                <button
+                    onClick={() => setShowInviteModal(true)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-emerald-400 hover:bg-emerald-500/10 transition-colors border border-emerald-500/20"
+                >
+                    <UserPlus size={18} />
+                    {currentUser.role === 'pro' ? t('invite_athlete') : t('invite_partners')}
+                </button>
 
                 <NavLink
                     to="/settings"

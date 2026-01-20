@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Search, Filter, MapPin,
     Globe, Star, PlayCircle,
@@ -7,100 +7,38 @@ import {
     ArrowRight, Info
 } from 'lucide-react';
 import { useLanguage } from '@/shared/context/LanguageContext';
-import { cn } from '@/shared/lib/utils';
+import { cn } from '@/core/utils/cn';
 import { Card } from '@/shared/components/ui/Card';
 import { LanguageSwitcher } from '@/shared/components/common/LanguageSwitcher';
 import { SEO } from '@/shared/components/common/SEO';
+import { useMarketplaceStore, CoachProfile as ICoachProfile } from '@/features/marketplace/stores/marketplaceStore';
+import { CoachProfile } from '@/features/marketplace/components/CoachProfile';
 
-interface Coach {
-    id: string;
-    name: string;
-    role: string;
-    specialty: string;
-    rating: number;
-    distancePrice: string;
-    presencialPrice: string;
-    avatar: string;
-    tags: string[];
-    bio: string;
-    experience: string;
-    gallery: number[];
-    videoUrl: string;
-    presencial: boolean;
-    distance: boolean;
-}
-
-const MOCK_COACHES: Coach[] = [
-    {
-        id: 'c1',
-        name: 'Mike Henderson',
-        role: 'Endurance Specialist',
-        specialty: 'Marathon & Ironman Prep',
-        rating: 4.9,
-        distancePrice: '85€/mo',
-        presencialPrice: '45€/hr',
-        avatar: 'M',
-        tags: ['Running', 'Cycling', 'Triathlon'],
-        bio: 'Former elite triathlete dedicated to data-driven performance. I combine physiological analysis with psychological toughness training.',
-        experience: '12+ Years',
-        gallery: [1, 2, 3],
-        videoUrl: '#',
-        presencial: true,
-        distance: true
-    },
-    {
-        id: 'c2',
-        name: 'Sarah Chen',
-        role: 'Strength & Conditioning',
-        specialty: 'Explosive Power & Injury Prevention',
-        rating: 5.0,
-        distancePrice: '120€/mo',
-        presencialPrice: '60€/hr',
-        avatar: 'S',
-        tags: ['CrossFit', 'Trail', 'Fitness'],
-        bio: 'Specialized in building robust athletes who last. My methods focus on biomechanical efficiency and sustainable growth.',
-        experience: '8 Years',
-        gallery: [1, 2],
-        videoUrl: '#',
-        presencial: true,
-        distance: true
-    },
-    {
-        id: 'c3',
-        name: 'Lorenzo Valli',
-        role: 'Cycling Technical Director',
-        specialty: 'Aero Optimization & FTP Build',
-        rating: 4.8,
-        distancePrice: '95€/mo',
-        presencialPrice: 'N/A',
-        avatar: 'L',
-        tags: ['Cycling', 'Triathlon'],
-        bio: 'Italian performance coach focusing on cycling mechanics and metabolic efficiency. Remote-only elite program.',
-        experience: '15 Years',
-        gallery: [1, 2, 3, 4],
-        videoUrl: '#',
-        presencial: false,
-        distance: true
-    }
-];
-
-interface CoachMarketplaceProps {
-    onSelectCoach: (coach: Coach) => void;
-    onBackToLanding: () => void;
-}
-
-export function CoachMarketplace({ onSelectCoach, onBackToLanding }: CoachMarketplaceProps) {
+export function CoachMarketplace({ onSelectCoach: onSelectCoachProp, onBackToLanding }: { onSelectCoach: any, onBackToLanding: () => void }) {
     const { t } = useLanguage();
-    const [selectedCoach, setSelectedCoach] = useState<Coach | null>(null);
+    const { coaches, loading, fetchCoaches } = useMarketplaceStore();
+    const [selectedCoach, setSelectedCoach] = useState<ICoachProfile | null>(null);
     const [filterType, setFilterType] = useState('all'); // all, distance, presencial
     const [searchQuery, setSearchQuery] = useState('');
 
-    const filteredCoaches = MOCK_COACHES.filter(c => {
+    useEffect(() => {
+        fetchCoaches();
+    }, [fetchCoaches]);
+
+    const filteredCoaches = coaches.filter(c => {
+        // Determine capabilities based on offerings
+        const hasDistance = c.offerings?.some(o => o.type === 'PACKAGE') || false;
+        const hasPresencial = c.offerings?.some(o => o.type === 'HOURLY') || false; // Approximation for now
+
         const matchesType = filterType === 'all'
             ? true
-            : filterType === 'distance' ? c.distance : c.presencial;
-        const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            c.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
+            : filterType === 'distance' ? hasDistance : hasPresencial;
+
+        const searchLower = searchQuery.toLowerCase();
+        const matchesSearch =
+            (c.full_name || '').toLowerCase().includes(searchLower) ||
+            (c.specialties || []).some(tag => tag.toLowerCase().includes(searchLower));
+
         return matchesType && matchesSearch;
     });
 
@@ -112,23 +50,8 @@ export function CoachMarketplace({ onSelectCoach, onBackToLanding }: CoachMarket
                 keywords={["find sports coach", "endurance expert", "athletic conditioning", "performance coaching", "hire a coach"]}
                 internalLink="/pricing"
                 canonicalPath="/marketplace"
-                schemaData={{
-                    "@context": "https://schema.org",
-                    "@type": "ItemList",
-                    "name": t('marketplace_title'),
-                    "itemListElement": MOCK_COACHES.map((coach, index) => ({
-                        "@type": "ListItem",
-                        "position": index + 1,
-                        "item": {
-                            "@type": "Person",
-                            "name": coach.name,
-                            "jobTitle": coach.role,
-                            "description": coach.bio,
-                            "url": `https://more-training.com/marketplace?coach=${coach.id}`
-                        }
-                    }))
-                }}
             />
+
             {/* Header */}
             <div className="pt-24 pb-12 bg-slate-900/50 border-b border-slate-800">
                 <div className="max-w-7xl mx-auto px-6">
@@ -180,188 +103,105 @@ export function CoachMarketplace({ onSelectCoach, onBackToLanding }: CoachMarket
 
             {/* Grid */}
             <div className="max-w-7xl mx-auto px-6 py-12">
+                {loading && (
+                    <div className="text-center py-20 text-slate-500 text-xs font-black uppercase tracking-widest animate-pulse">
+                        Chargement des coachs...
+                    </div>
+                )}
+
+                {!loading && filteredCoaches.length === 0 && (
+                    <div className="text-center py-20 border border-dashed border-slate-800 rounded-3xl">
+                        <p className="text-slate-500 text-xs font-black uppercase tracking-widest">Aucun coach trouvé</p>
+                    </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {filteredCoaches.map(coach => (
-                        <Card
-                            key={coach.id}
-                            onClick={() => setSelectedCoach(coach)}
-                            className="group p-0 bg-slate-950 border-slate-900 overflow-hidden hover:border-indigo-500/30 hover:scale-[1.02] transition-all duration-500 cursor-pointer"
-                        >
-                            <div className="relative h-48 bg-slate-900 border-b border-slate-800 flex items-center justify-center">
-                                <div className="absolute top-4 right-4 z-20">
-                                    <div className="bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-1.5 shadow-xl">
-                                        <Star className="text-amber-400 fill-amber-400" size={14} />
-                                        <span className="text-[10px] font-black">{coach.rating}</span>
+                    {filteredCoaches.map(coach => {
+                        // Helper to find lowest price
+                        const packages = coach.offerings?.filter(o => o.type === 'PACKAGE') || [];
+                        const lowestPrice = packages.length > 0
+                            ? Math.min(...packages.map(p => p.price_cents))
+                            : null;
+
+                        return (
+                            <Card
+                                key={coach.id}
+                                onClick={() => setSelectedCoach(coach)}
+                                className="group p-0 bg-slate-950 border-slate-900 overflow-hidden hover:border-indigo-500/30 hover:scale-[1.02] transition-all duration-500 cursor-pointer"
+                            >
+                                <div className="relative h-48 bg-slate-900 border-b border-slate-800 flex items-center justify-center overflow-hidden">
+                                    {/* Background blur for avatar */}
+                                    <div className="absolute inset-0 opacity-20 bg-indigo-500/10 blur-3xl group-hover:opacity-40 transition-opacity" />
+
+                                    <div className="absolute top-4 right-4 z-20">
+                                        <div className="bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-1.5 shadow-xl">
+                                            <Star className="text-amber-400 fill-amber-400" size={14} />
+                                            <span className="text-[10px] font-black">{coach.rating?.toFixed(1) || '5.0'}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="relative w-24 h-24 rounded-[2rem] bg-gradient-to-br from-indigo-500 to-emerald-500 p-0.5 shadow-2xl group-hover:scale-110 transition-transform duration-500">
+                                        <div className="w-full h-full bg-slate-950 rounded-[1.9rem] flex items-center justify-center text-4xl font-black text-white overflow-hidden">
+                                            {coach.avatar_url ? (
+                                                <img src={coach.avatar_url} alt="" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <span>{(coach.first_name?.[0])}</span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="absolute bottom-4 left-4 flex gap-2">
+                                        {(coach.offerings?.some(o => o.type === 'PACKAGE')) && <div className="bg-emerald-500/20 text-emerald-400 p-1.5 rounded-lg border border-emerald-500/20"><Globe size={14} /></div>}
+                                        {(coach.offerings?.some(o => o.type === 'HOURLY')) && <div className="bg-indigo-500/20 text-indigo-400 p-1.5 rounded-lg border border-indigo-500/20"><MapPin size={14} /></div>}
                                     </div>
                                 </div>
-                                <div className="w-24 h-24 rounded-[2rem] bg-gradient-to-br from-indigo-500 to-emerald-500 flex items-center justify-center text-4xl font-black text-white shadow-2xl group-hover:scale-110 transition-transform duration-500">
-                                    {coach.avatar}
-                                </div>
-                                <div className="absolute bottom-4 left-4 flex gap-2">
-                                    {coach.distance && <div className="bg-emerald-500/20 text-emerald-400 p-1.5 rounded-lg border border-emerald-500/20"><Globe size={14} /></div>}
-                                    {coach.presencial && <div className="bg-indigo-500/20 text-indigo-400 p-1.5 rounded-lg border border-indigo-500/20"><MapPin size={14} /></div>}
-                                </div>
-                            </div>
-                            <div className="p-8">
-                                <h3 className="text-xl font-black uppercase tracking-tight mb-1 group-hover:text-indigo-400 transition-colors">{coach.name}</h3>
-                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-4">{coach.role}</p>
 
-                                <div className="flex flex-wrap gap-2 mb-6">
-                                    {coach.tags.map(tag => (
-                                        <span key={tag} className="text-[9px] font-black uppercase tracking-tighter px-3 py-1 bg-slate-900 text-slate-400 rounded-lg">
-                                            {tag}
-                                        </span>
-                                    ))}
-                                </div>
+                                <div className="p-8">
+                                    <h3 className="text-xl font-black uppercase tracking-tight mb-1 group-hover:text-indigo-400 transition-colors truncate">
+                                        {coach.full_name || coach.email.split('@')[0]}
+                                    </h3>
+                                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-4 truncate">
+                                        {coach.specialties?.[0] || 'Coach Certifié'}
+                                    </p>
 
-                                <div className="pt-6 border-t border-slate-900 flex justify-between items-center">
-                                    <div>
-                                        <p className="text-[9px] font-black text-slate-600 uppercase mb-1">Starting from</p>
-                                        <p className="text-lg font-black text-white">{coach.distancePrice}</p>
+                                    <div className="flex flex-wrap gap-2 mb-6 min-h-[50px] content-start">
+                                        {(coach.specialties || []).slice(0, 3).map(tag => (
+                                            <span key={tag} className="text-[9px] font-black uppercase tracking-tighter px-3 py-1 bg-slate-900 text-slate-400 rounded-lg border border-slate-800">
+                                                {tag}
+                                            </span>
+                                        ))}
                                     </div>
-                                    <button className="bg-slate-900 group-hover:bg-indigo-600 p-3 rounded-2xl border border-slate-800 group-hover:border-indigo-500 transition-all">
-                                        <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-                                    </button>
+
+                                    <div className="pt-6 border-t border-slate-900 flex justify-between items-center">
+                                        <div>
+                                            <p className="text-[9px] font-black text-slate-600 uppercase mb-1">Starting from</p>
+                                            <p className="text-lg font-black text-white">
+                                                {lowestPrice ? `€${lowestPrice / 100}/mo` : 'Sur devis'}
+                                            </p>
+                                        </div>
+                                        <button className="bg-slate-900 group-hover:bg-indigo-600 p-3 rounded-2xl border border-slate-800 group-hover:border-indigo-500 transition-all">
+                                            <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                        </Card>
-                    ))}
+                            </Card>
+                        );
+                    })}
                 </div>
             </div>
 
-            {/* Coach CV Modal */}
+            {/* Coach Profile Modal */}
             {selectedCoach && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 backdrop-blur-2xl bg-slate-950/80 animate-in fade-in duration-300">
-                    <Card className="w-full max-w-5xl h-[85vh] bg-slate-950 border-white/5 shadow-3xl overflow-hidden flex flex-col md:flex-row p-0">
-                        <button
-                            onClick={() => setSelectedCoach(null)}
-                            className="absolute top-6 right-6 z-[120] w-12 h-12 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl flex items-center justify-center transition-all shadow-2xl"
-                        >
-                            <X size={24} />
-                        </button>
-
-                        {/* Visual Column */}
-                        <div className="md:w-2/5 h-full bg-slate-900 border-r border-slate-800 relative overflow-hidden flex flex-col items-center justify-center p-12 text-center">
-                            <div className="absolute top-0 left-0 w-full h-full opacity-20 bg-[url('https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=2070&auto=format&fit=crop')] bg-cover"></div>
-                            <div className="relative z-10">
-                                <div className="w-40 h-40 rounded-[3rem] bg-gradient-to-br from-emerald-400 to-indigo-600 p-1 flex items-center justify-center shadow-3xl mb-8 group cursor-pointer">
-                                    <div className="w-full h-full bg-slate-950 rounded-[2.8rem] flex items-center justify-center text-6xl font-black text-white group-hover:scale-95 transition-transform duration-500">
-                                        {selectedCoach.avatar}
-                                    </div>
-                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <PlayCircle size={48} className="text-white" />
-                                    </div>
-                                </div>
-                                <h2 className="text-4xl font-black uppercase tracking-tighter text-white mb-2">{selectedCoach.name}</h2>
-                                <p className="text-xs font-bold text-indigo-400 uppercase tracking-[0.3em] mb-8">{selectedCoach.specialty}</p>
-                                <div className="flex gap-4 mb-2">
-                                    <div className="p-4 bg-slate-950 border border-slate-800 rounded-2xl flex-1">
-                                        <p className="text-[10px] font-black text-slate-600 uppercase mb-1">Ratings</p>
-                                        <p className="text-lg font-black text-white">{selectedCoach.rating}/5.0</p>
-                                    </div>
-                                    <div className="p-4 bg-slate-950 border border-slate-800 rounded-2xl flex-1">
-                                        <p className="text-[10px] font-black text-slate-600 uppercase mb-1">Exp.</p>
-                                        <p className="text-lg font-black text-white">{selectedCoach.experience}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Content Column */}
-                        <div className="md:w-3/5 h-full overflow-y-auto p-12 scrollbar-hide">
-                            <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-4">Interactive Curriculum Vitae</h4>
-                            <div className="prose prose-invert max-w-none">
-                                <p className="text-xl font-medium text-slate-300 leading-relaxed italic mb-12">
-                                    "{selectedCoach.bio}"
-                                </p>
-                            </div>
-
-                            <div className="space-y-12">
-                                <div>
-                                    <h5 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-white mb-6">
-                                        <Camera className="text-emerald-400" size={18} /> Experience Gallery
-                                    </h5>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        {selectedCoach.gallery.map(i => (
-                                            <div key={i} className="aspect-square bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-center text-slate-700 hover:border-emerald-500 transition-all overflow-hidden group">
-                                                <div className="w-full h-full bg-slate-800 bg-opacity-20 flex items-center justify-center">
-                                                    <Info size={24} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <h5 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-white mb-6">
-                                        <CreditCard className="text-indigo-400" size={18} /> Training Packages
-                                    </h5>
-                                    <div className="space-y-4">
-                                        {selectedCoach.distance && (
-                                            <div className="p-6 bg-slate-900/50 border border-slate-800 rounded-3xl flex items-center justify-between group hover:border-emerald-500/50 transition-all">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                                                        <Globe size={24} />
-                                                    </div>
-                                                    <div>
-                                                        <h6 className="text-sm font-black uppercase">{t('training_distance')}</h6>
-                                                        <ul className="text-[9px] font-bold text-slate-500 uppercase flex gap-3 mt-1">
-                                                            <li>• Weekly Feedback</li>
-                                                            <li>• AI Analysis</li>
-                                                            <li>• Chat Access</li>
-                                                        </ul>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right flex items-center gap-6">
-                                                    <p className="text-2xl font-black text-emerald-400">{selectedCoach.distancePrice}</p>
-                                                    <button
-                                                        onClick={() => onSelectCoach(selectedCoach)}
-                                                        className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-6 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all"
-                                                    >
-                                                        Hire Now
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )}
-                                        {selectedCoach.presencial && (
-                                            <div className="p-6 bg-slate-900/50 border border-slate-800 rounded-3xl flex items-center justify-between group hover:border-indigo-500/50 transition-all">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
-                                                        <MapPin size={24} />
-                                                    </div>
-                                                    <div>
-                                                        <h6 className="text-sm font-black uppercase">{t('training_presencial')}</h6>
-                                                        <ul className="text-[9px] font-bold text-slate-500 uppercase flex gap-3 mt-1">
-                                                            <li>• Biometric Setup</li>
-                                                            <li>• Field Drill</li>
-                                                            <li>• Equipment Check</li>
-                                                        </ul>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right flex items-center gap-6">
-                                                    <p className="text-2xl font-black text-indigo-400">{selectedCoach.presencialPrice}</p>
-                                                    <button
-                                                        onClick={() => onSelectCoach(selectedCoach)}
-                                                        className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all"
-                                                    >
-                                                        Book Session
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="mt-8 p-4 bg-indigo-500/5 border border-indigo-500/20 rounded-2xl flex items-start gap-4">
-                                        <Info className="text-indigo-400 shrink-0 mt-0.5" size={16} />
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase leading-relaxed tracking-tight">
-                                            The payment will be processed directly with the coach's Stripe terminal. More Training takes 0% commission on professional athletic contracts.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </Card>
-                </div>
+                <CoachProfile
+                    coach={selectedCoach}
+                    onClose={() => setSelectedCoach(null)}
+                    onSelectOffering={(offering) => {
+                        console.log('Selected offering:', offering);
+                        // Future: Navigate to checkout / Stripe or Message
+                    }}
+                />
             )}
         </div>
     );
 }
+

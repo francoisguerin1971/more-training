@@ -6,7 +6,8 @@ import {
     Clock, TrendingUp, AlertCircle,
     Calendar as CalendarIcon,
     ArrowUpRight, Target,
-    Video, UserPlus, Ghost, ChevronRightIcon, ChevronLeft, Search, Tag
+    Video, UserPlus, Ghost, ChevronRightIcon, ChevronLeft, Search, Tag,
+    Sun, Cloud, CloudRain, CloudLightning, ShieldAlert, PlusCircle, Trash2, AtSign, Hash, Check, X
 } from 'lucide-react';
 import { useLanguage } from '@/shared/context/LanguageContext';
 import { useAuthStore } from '@/features/auth/stores/authStore';
@@ -39,23 +40,10 @@ interface ComplianceStat {
 export function CoachDashboard() {
     const navigate = useNavigate();
     const { t, language } = useLanguage();
-    const { currentUser, getAthletesForCoach, inviteAthlete, getCoachOfferings } = useAuthStore();
+    const { currentUser, setShowInviteModal, getAthletesForCoach } = useAuthStore();
     const { workouts } = useTraining();
 
-    const [showInviteModal, setShowInviteModal] = useState(false);
     const [selectedAthleteForTech, setSelectedAthleteForTech] = useState<UserProfile | null>(null);
-    const [inviteStep, setInviteStep] = useState(1);
-    const [offerings, setOfferings] = useState<any[]>([]);
-    const [inviteData, setInviteData] = useState({
-        email: '',
-        name: '',
-        sport: '',
-        objective: '',
-        formStatus: 'optimal',
-        suggestedPlan: '',
-        availableDays: [1, 2, 3, 4, 5]
-    });
-
     const [athletes, setAthletes] = useState<AthleteWithStats[]>([]);
     const [loading, setLoading] = useState(true);
     const [revenue, setRevenue] = useState(0);
@@ -79,19 +67,10 @@ export function CoachDashboard() {
                 if (currentUser?.id) {
                     const coachId = currentUser.id;
 
-                    const [athletesData, offeringsData] = await Promise.all([
-                        getAthletesForCoach(coachId),
-                        getCoachOfferings(coachId)
-                    ]);
+                    const athletesData = await getAthletesForCoach(coachId);
 
                     setAthletes(athletesData || []);
-                    setOfferings(offeringsData || []);
                     setActiveAthletesCount(athletesData?.length || 0);
-
-                    if (offeringsData && offeringsData.length > 0) {
-                        const firstPackage = offeringsData.find((o: any) => o.type === 'PACKAGE');
-                        if (firstPackage) setInviteData(prev => ({ ...prev, suggestedPlan: firstPackage.id }));
-                    }
 
                     // 1. Revenue
                     const { data: payments } = await supabase
@@ -166,10 +145,29 @@ export function CoachDashboard() {
                             id: a.id,
                             athlete: athletesData.find(ath => ath.id === a.athlete_id)?.name || 'Athlete',
                             time: format(new Date(a.start_time), 'HH:mm'),
+                            rawDate: new Date(a.start_time),
                             type: a.title,
                             duration: formatDistance(new Date(a.start_time), new Date(a.end_time), { locale: dateLocale })
                         })));
                     }
+
+                    // V4: Simulation Functions
+                    const getWeatherIcon = (date: Date) => {
+                        const day = date.getDate();
+                        if (day % 4 === 0) return <CloudRain size={10} className="text-indigo-400" />;
+                        if (day % 3 === 0) return <Cloud size={10} className="text-slate-400" />;
+                        if (day % 5 === 0) return <CloudLightning size={10} className="text-amber-400" />;
+                        return <Sun size={10} className="text-amber-400" />;
+                    };
+
+                    const getComplianceLevel = (compliance: number) => {
+                        if (compliance >= 90) return 'high';
+                        if (compliance >= 70) return 'moderate';
+                        return 'low';
+                    };
+
+                    (window as any).getCoachWeatherIcon = getWeatherIcon;
+                    (window as any).getCoachComplianceLevel = getComplianceLevel;
 
                 }
             } catch (err) {
@@ -182,25 +180,8 @@ export function CoachDashboard() {
         if (currentUser) {
             loadDashboardData();
         }
-    }, [currentUser, getAthletesForCoach, getCoachOfferings]);
+    }, [currentUser, getAthletesForCoach]);
 
-    // Internal Helpers
-    const handleInviteSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!currentUser?.id) return;
-        const { error } = await inviteAthlete({
-            email: inviteData.email,
-            name: inviteData.name,
-            sport: inviteData.sport,
-            suggestedPlan: inviteData.suggestedPlan
-        });
-        if (error) toast.error(t('error_generic'));
-        else {
-            toast.success(t('save_success'));
-            setShowInviteModal(false);
-            setInviteStep(1);
-        }
-    };
 
     const stats = [
         {
@@ -310,7 +291,10 @@ export function CoachDashboard() {
                                         {m.time.split(':')[0]}h
                                     </div>
                                     <div>
-                                        <h4 className="text-xs font-black text-white uppercase tracking-tight">{m.athlete}</h4>
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="text-xs font-black text-white uppercase tracking-tight">{m.athlete}</h4>
+                                            {(window as any).getCoachWeatherIcon && (window as any).getCoachWeatherIcon(m.rawDate)}
+                                        </div>
                                         <p className="text-[9px] text-slate-500 font-bold uppercase tracking-tighter">{m.type}</p>
                                     </div>
                                 </div>
@@ -380,7 +364,14 @@ export function CoachDashboard() {
                                     </div>
                                     <div>
                                         <h4 className="text-xs font-bold text-white uppercase">{h.name}</h4>
-                                        <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-widest">{h.compliance}% {t('compliance_label')}</p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-widest">{h.compliance}% {t('compliance_label')}</p>
+                                            <div className="flex gap-0.5">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]" />
+                                                <div className="w-1.5 h-1.5 rounded-full bg-slate-800" />
+                                                <div className="w-1.5 h-1.5 rounded-full bg-slate-800" />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="text-emerald-400">
@@ -409,7 +400,14 @@ export function CoachDashboard() {
                                     </div>
                                     <div>
                                         <h4 className="text-xs font-bold text-white uppercase">{g.name}</h4>
-                                        <p className="text-[9px] text-rose-400 font-bold uppercase tracking-widest">{g.compliance}% - {t('last_active_label')} {g.lastActive}</p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-[9px] text-rose-400 font-bold uppercase tracking-widest">{g.compliance}% - {t('last_active_label')} {g.lastActive}</p>
+                                            <div className="flex gap-0.5">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-slate-800" />
+                                                <div className="w-1.5 h-1.5 rounded-full bg-slate-800" />
+                                                <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_5px_rgba(244,63,94,0.5)]" />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                                 <button className="px-3 py-1 bg-rose-500 text-white rounded text-[8px] font-black uppercase hover:bg-rose-600">
@@ -463,164 +461,6 @@ export function CoachDashboard() {
                     )}
                 </div>
             </Card>
-
-
-            {/* Advanced Invite Modal */}
-            {showInviteModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-black/80 animate-in fade-in duration-300">
-                    <Card className="w-full max-w-lg border-emerald-500/20 shadow-2xl animate-in zoom-in-95 duration-500 bg-slate-950 p-8 shadow-emerald-500/10">
-                        <div className="flex justify-between items-center mb-8">
-                            <div>
-                                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">{t('invite_athlete')}</h2>
-                                <p className="text-slate-500 text-[9px] font-bold uppercase tracking-widest mt-1">{t('invite_phase')} {inviteStep}/2</p>
-                            </div>
-                            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
-                                <UserPlus size={24} />
-                            </div>
-                        </div>
-
-                        <form onSubmit={handleInviteSubmit} className="space-y-6">
-                            {inviteStep === 1 && (
-                                <div className="space-y-6 animate-in slide-in-from-right-10 duration-500">
-                                    <div className="space-y-2">
-                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{t('athlete_identity')}</label>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <input
-                                                type="text"
-                                                placeholder={t('full_name_label')}
-                                                value={inviteData.name}
-                                                onChange={e => setInviteData(p => ({ ...p, name: e.target.value }))}
-                                                className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-4 text-white text-xs font-bold focus:outline-none focus:border-emerald-500 transition-all"
-                                            />
-                                            <input
-                                                type="email"
-                                                required
-                                                placeholder="email@domain.com"
-                                                value={inviteData.email}
-                                                onChange={e => setInviteData(p => ({ ...p, email: e.target.value }))}
-                                                className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-4 text-white text-xs font-bold focus:outline-none focus:border-emerald-500 transition-all"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{t('primary_sport_label')}</label>
-                                        <select
-                                            value={inviteData.sport}
-                                            onChange={e => setInviteData(p => ({ ...p, sport: e.target.value }))}
-                                            className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-4 text-white text-xs font-black uppercase tracking-widest appearance-none focus:outline-none focus:border-emerald-500 transition-all"
-                                        >
-                                            <option value="">{t('select')}</option>
-                                            <option value="Running">Running</option>
-                                            <option value="Cycling">Cycling</option>
-                                            <option value="Swimming">Swimming</option>
-                                            <option value="Triathlon">Triathlon</option>
-                                            <option value="Trail">Trail</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            )}
-
-                            {inviteStep === 2 && (
-                                <div className="space-y-6 animate-in slide-in-from-right-10 duration-500">
-                                    <div className="space-y-2">
-                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{t('main_goal_label')}</label>
-                                        <textarea
-                                            placeholder="e.g. Ironman 70.3 Nice..."
-                                            value={inviteData.objective}
-                                            onChange={e => setInviteData(p => ({ ...p, objective: e.target.value }))}
-                                            className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-4 text-white text-xs font-medium h-24 resize-none focus:outline-none focus:border-emerald-500 transition-all"
-                                        />
-                                    </div>
-                                    <div className="space-y-4">
-                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('suggested_plan')}</label>
-                                        <div className="grid grid-cols-1 gap-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-                                            {offerings.filter(o => o.type === 'PACKAGE').map(plan => (
-                                                <button
-                                                    key={plan.id}
-                                                    type="button"
-                                                    onClick={() => setInviteData(p => ({ ...p, suggestedPlan: plan.id }))}
-                                                    className={cn(
-                                                        "flex items-center justify-between p-4 rounded-2xl border-2 transition-all",
-                                                        inviteData.suggestedPlan === plan.id ? "border-emerald-500 bg-emerald-500/5" : "border-slate-900 bg-slate-900/50 hover:bg-slate-900"
-                                                    )}
-                                                >
-                                                    <div className="flex items-center gap-3">
-                                                        <div className={cn("w-2 h-2 rounded-full", inviteData.suggestedPlan === plan.id ? "bg-emerald-500" : "bg-slate-700")} />
-                                                        <span className="text-[10px] font-black text-white uppercase tracking-tight">{plan.name}</span>
-                                                    </div>
-                                                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">€{plan.price_cents / 100}</span>
-                                                </button>
-                                            ))}
-                                            {offerings.filter(o => o.type === 'PACKAGE').length === 0 && (
-                                                <p className="text-[10px] text-slate-500 italic p-4 text-center border border-dashed border-slate-800 rounded-2xl">
-                                                    Aucun forfait configuré. Configurez vos offres d'abord.
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{t('initial_form')}</label>
-                                        <div className="flex gap-2">
-                                            {['recovering', 'optimal', 'peak'].map(s => (
-                                                <button
-                                                    key={s}
-                                                    type="button"
-                                                    onClick={() => setInviteData(p => ({ ...p, formStatus: s }))}
-                                                    className={cn(
-                                                        "flex-1 py-3 rounded-xl border-2 font-black uppercase tracking-tighter text-[9px] transition-all",
-                                                        inviteData.formStatus === s ? "border-emerald-500 bg-emerald-500/5 text-white" : "border-slate-800 text-slate-600"
-                                                    )}
-                                                >
-                                                    {s}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="flex gap-4 pt-6">
-                                {inviteStep === 1 ? (
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowInviteModal(false)}
-                                        className="flex-1 py-4 text-xs font-black text-slate-500 hover:text-white uppercase tracking-widest transition-all"
-                                    >
-                                        Abort
-                                    </button>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        onClick={() => setInviteStep(1)}
-                                        className="flex-1 py-4 bg-slate-800 text-white rounded-xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2"
-                                    >
-                                        <ChevronLeft size={16} /> Back
-                                    </button>
-                                )}
-
-                                {inviteStep === 1 ? (
-                                    <button
-                                        type="button"
-                                        onClick={() => setInviteStep(2)}
-                                        disabled={!inviteData.email}
-                                        className="flex-2 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 disabled:opacity-30"
-                                    >
-                                        Parameters <ChevronRightIcon size={16} />
-                                    </button>
-                                ) : (
-                                    <button
-                                        type="submit"
-                                        className="flex-2 px-12 py-4 bg-emerald-600 hover:bg-emerald-500 text-slate-950 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-emerald-500/20 transition-all flex items-center justify-center gap-2"
-                                    >
-                                        {t('deploy_invitation')} <CheckCircle2 size={16} />
-                                    </button>
-                                )}
-                            </div>
-                        </form>
-                    </Card>
-                </div>
-            )}
 
             {/* Technical Assessment Modal */}
             {selectedAthleteForTech && (
