@@ -13,7 +13,7 @@ interface AuthActions {
     getAthletesForCoach: (coachId: string) => Promise<any[]>;
     getCoachesForAthlete: (athleteId: string) => Promise<any[]>;
     inviteAthlete: (invite: { email: string; first_name?: string; last_name?: string; sport?: string; role?: string; suggestedPlan?: string }) => Promise<{ data: any; error: any }>;
-    deleteAccount: (userId: string) => Promise<void>;
+    deleteAccount: () => Promise<void>;
     uploadAvatar: (file: File) => Promise<{ path: string; error: any }>;
     setShowInviteModal: (show: boolean) => void;
     // MFA Actions
@@ -26,6 +26,10 @@ interface AuthActions {
     getCoachOfferings: (coachId: string) => Promise<any[]>;
     saveCoachOffering: (offering: any) => Promise<{ data: any; error: any }>;
     deleteCoachOffering: (offeringId: string) => Promise<{ error: any }>;
+    getCoachResources: (coachId: string) => Promise<any[]>;
+    getSharedResources: () => Promise<any[]>;
+    saveCoachResource: (resource: any) => Promise<{ data: any; error: any }>;
+    deleteCoachResource: (resourceId: string) => Promise<{ error: any }>;
 }
 
 export type AuthStore = AuthState & AuthActions;
@@ -39,6 +43,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
     init: async () => {
         if (get().initialized) return;
+        set({ initialized: true }); // Set synchronously to prevent race condition
 
         try {
             const { data: { session } } = await supabase.auth.getSession();
@@ -64,8 +69,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
                 set({ loading: false });
             }
         });
-
-        set({ initialized: true });
     },
 
     fetchProfile: async (userId: string) => {
@@ -82,70 +85,18 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     },
 
     login: async (email: string, password: string) => {
-        const isDev = import.meta.env.DEV || import.meta.env.MODE === 'development';
-        const isDemo = import.meta.env.VITE_DEMO_MODE === 'true';
-
-        // Dual Role Simulation
-        if (email === 'admin@moretraining.com' || email === 'both@moretraining.com') {
-            set({
-                currentUser: {
-                    id: 'admin-dual-id',
-                    email: email,
-                    role: 'pro', // Default to Pro, but allow switch
-                    status: 'active',
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                    first_name: "Admin",
-                    last_name: "Dual"
-                },
-                isDualRole: true,
-                loading: false
-            });
-            return true;
-        }
-
-        if (isDev || isDemo) {
-            if (email === 'test@moretraining.com' && password === 'Moov2026!') {
-                set({
-                    currentUser: {
-                        id: 'demo-pro-id',
-                        email: 'test@moretraining.com',
-                        role: 'pro',
-                        status: 'active',
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    },
-                    loading: false
-                });
-                return true;
-            }
-            if (email === 'athlete@moretraining.com' && password === 'Moov2026!') {
-                set({
-                    currentUser: {
-                        id: 'demo-athlete-id',
-                        email: 'athlete@moretraining.com',
-                        role: 'athlete',
-                        status: 'active',
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString(),
-                        first_name: 'Hugo',
-                        last_name: 'Test'
-                    },
-                    loading: false
-                });
-                return true;
-            }
-        }
-
+        set({ loading: true });
         try {
             const { error } = await supabase.auth.signInWithPassword({ email, password });
             if (error) {
                 logger.error('Login error:', error.message);
+                set({ loading: false });
                 return false;
             }
             return true;
         } catch (err: any) {
             logger.error('Login exception:', err);
+            set({ loading: false });
             return false;
         }
     },
@@ -181,37 +132,20 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
     updateProfile: async (updates: Partial<UserProfile>): Promise<{ data: any; error: any }> => {
         const { currentUser } = get();
-        console.log('authStore.updateProfile called with:', updates);
-
-        if (!currentUser) {
-            console.error('authStore.updateProfile: No currentUser found');
-            return { error: 'No user', data: null };
-        }
+        if (!currentUser) return { error: 'No user', data: null };
 
         try {
-            // Check if we should use 'user_id' or 'id'
-            // Usually 'id' is the serial and 'user_id' is the uuid
-            // Profiles table in this app uses 'id' as serial and 'user_id' as uuid
-            const targetId = currentUser.id;
-            console.log('authStore.updateProfile targeting profile ID:', targetId);
-
             const { data, error } = await supabase
                 .from('profiles')
                 .update(updates)
-                .eq('id', targetId)
+                .eq('id', currentUser.id)
                 .select()
                 .single();
 
-            if (error) {
-                console.error('authStore.updateProfile database error:', error);
-                return { data: null, error };
-            }
-
-            console.log('authStore.updateProfile success:', data);
+            if (error) return { data: null, error };
             if (data) set({ currentUser: data as UserProfile });
             return { data, error: null };
         } catch (err: any) {
-            console.error('authStore.updateProfile exception:', err);
             return { data: null, error: err };
         }
     },
@@ -221,39 +155,19 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
             const { data, error } = await supabase
                 .from('coach_athlete_relationships')
                 .select(`
-                    id,
-                    status,
-                    subscription_plan,
-                    athlete:athlete_id (
-                        id,
-                        full_name,
-                        first_name,
-                        last_name,
-                        pseudo,
-                        email,
-                        profile_data
-                    )
+                    id, status, subscription_plan,
+                    athlete:athlete_id (id, full_name, first_name, last_name, pseudo, email, profile_data)
                 `)
                 .eq('coach_id', coachId)
                 .in('status', ['ACTIVE', 'PENDING']);
 
-            if (error) {
-                logger.error('Error fetching athletes:', error);
-                return [];
-            }
-
+            if (error) return [];
             return (data as any[])?.map(rel => {
                 const athlete = rel.athlete;
                 return {
                     id: athlete.id,
-                    first_name: athlete.first_name,
-                    last_name: athlete.last_name,
-                    pseudo: athlete.pseudo,
-                    full_name: athlete.full_name,
+                    name: athlete.first_name && athlete.last_name ? `${athlete.first_name} ${athlete.last_name}` : (athlete.full_name || athlete.pseudo || 'Athlete'),
                     email: athlete.email,
-                    name: athlete.first_name && athlete.last_name
-                        ? `${athlete.first_name} ${athlete.last_name}`
-                        : (athlete.full_name || athlete.pseudo || 'Athlete'),
                     avatar: (athlete.first_name?.[0] || athlete.full_name?.[0] || 'A'),
                     profile: athlete.profile_data || {},
                     relationshipStatus: rel.status,
@@ -261,7 +175,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
                 };
             }) || [];
         } catch (err: any) {
-            logger.error('Exception fetching athletes:', err);
             return [];
         }
     },
@@ -271,112 +184,71 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
             const { data, error } = await supabase
                 .from('coach_athlete_relationships')
                 .select(`
-                    id,
-                    status,
-                    subscription_plan,
-                    coach:coach_id (
-                        id,
-                        full_name,
-                        first_name,
-                        last_name,
-                        pseudo,
-                        email,
-                        profile_data
-                    )
+                    id, status, subscription_plan,
+                    coach:coach_id (id, full_name, first_name, last_name, pseudo, email, profile_data)
                 `)
                 .eq('athlete_id', athleteId)
                 .in('status', ['ACTIVE', 'PENDING']);
 
-            if (error) {
-                logger.error('Error fetching coaches:', error);
-                return [];
-            }
-
+            if (error) return [];
             return (data as any[])?.map(rel => ({
                 id: rel.coach.id,
-                name: rel.coach.first_name && rel.coach.last_name
-                    ? `${rel.coach.first_name} ${rel.coach.last_name}`
-                    : (rel.coach.full_name || rel.coach.pseudo || 'Coach'),
+                name: rel.coach.first_name && rel.coach.last_name ? `${rel.coach.first_name} ${rel.coach.last_name}` : (rel.coach.full_name || rel.coach.pseudo || 'Coach'),
                 avatar: (rel.coach.first_name?.[0] || rel.coach.full_name?.[0] || 'C'),
                 specialty: rel.coach.profile_data?.specialties?.[0] || 'Coach',
                 relationshipStatus: rel.status,
                 plan: rel.subscription_plan,
-                booking_settings: {
-                    modes: rel.coach.id === 'demo-pro-id' ? ['video', 'presencial'] : ['video'], // Demo config
-                    duration: 45,
-                    buffer: 15,
-                    maxMonths: 3
-                }
+                booking_settings: { modes: ['video'], duration: 45, buffer: 15, maxMonths: 3 }
             })) || [];
         } catch (err: any) {
-            logger.error('Exception fetching coaches:', err);
             return [];
         }
     },
-    inviteAthlete: async (invite: { email: string; first_name?: string; last_name?: string; sport?: string; role?: string; suggestedPlan?: string }): Promise<{ data: any; error: any }> => {
+
+    inviteAthlete: async (invite) => {
         const { currentUser } = get();
         if (!currentUser) return { data: null, error: 'No user' };
 
-        // Mock for testing, demo mode or unconfigured Supabase
-        const isDev = import.meta.env.DEV;
-        const isSupabaseConfigured = import.meta.env.VITE_SUPABASE_URL && !import.meta.env.VITE_SUPABASE_URL.includes('placeholder');
-
-        if (isDev || currentUser.id === 'demo-pro-id' || import.meta.env.VITE_DEMO_MODE === 'true' || !isSupabaseConfigured) {
-            console.log('[INVITE SIMULATION] Processed for:', invite.email);
-            return new Promise((resolve) => {
-                setTimeout(() => {
-                    resolve({
-                        data: { id: 'mock-invite-' + Date.now(), ...invite },
-                        error: null
-                    });
-                }, 800);
-            });
-        }
-
         try {
+            // Sanitize inputs to prevent XSS
+            const sanitize = (s?: string) => s?.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
             const { data, error } = await supabase
                 .from('invitations')
                 .insert([{
                     coach_id: currentUser.id,
-                    email: invite.email,
-                    first_name: invite.first_name,
-                    last_name: invite.last_name,
-                    sport: invite.sport,
-                    role: invite.role || 'athlete',
+                    email: invite.email?.toLowerCase().trim(),
+                    first_name: sanitize(invite.first_name),
+                    last_name: sanitize(invite.last_name),
+                    sport: sanitize(invite.sport),
+                    role: invite.role === 'coach' ? 'coach' : 'athlete', // Whitelist roles
                     suggested_plan: invite.suggestedPlan
                 }])
-                .select()
-                .single();
-
-            if (error) {
-                logger.error('Error creating invitation:', error);
-                return { data: null, error };
-            }
-
-            logger.info(`Invited athlete: ${invite.email}`);
-            return { data, error: null };
+                .select().single();
+            if (error) logger.error('inviteAthlete error:', error);
+            return { data, error };
         } catch (err: any) {
-            logger.error('Exception inviting athlete:', err);
+            logger.error('inviteAthlete exception:', err);
             return { data: null, error: err };
         }
     },
-    deleteAccount: async (userId: string) => {
+
+    deleteAccount: async () => {
+        const { currentUser } = get();
+        if (!currentUser) {
+            logger.error('deleteAccount: No authenticated user');
+            return;
+        }
+
         try {
-            // Check if demo user
-            if (userId === 'demo-pro-id') {
-                logger.info('Demo account deletion simulated');
-                set({ currentUser: null });
-                return;
-            }
+            // Soft delete via profile update - admin API not available client-side
+            const { error } = await supabase
+                .from('profiles')
+                .update({ status: 'deleted', deleted_at: new Date().toISOString() })
+                .eq('id', currentUser.id);
 
-            // Real deletion
-            const { error } = await supabase.auth.admin.deleteUser(userId);
             if (error) {
-                // If admin call fails (likely due to RLS/Permissions), try rpc or simple signOut + logical delete
-                logger.warn('Admin delete failed, trying soft delete logic or ignoring if client-side restriction', error);
-
-                // Fallback: Just sign out for now in this context, or better, mark status as deleted
-                await supabase.from('profiles').update({ status: 'deleted' }).eq('id', userId);
+                logger.error('deleteAccount: Failed to mark profile as deleted:', error);
             }
 
             await supabase.auth.signOut();
@@ -390,254 +262,208 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         const { currentUser } = get();
         if (!currentUser) return { path: '', error: 'No user' };
 
-        try {
-            // Upload to 'avatars' bucket
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${currentUser.id}/${Date.now()}.${fileExt}`;
-            const filePath = `${fileName}`;
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        if (!allowedTypes.includes(file.type)) {
+            return { path: '', error: 'Invalid file type. Only JPEG, PNG, WebP, and GIF are allowed.' };
+        }
 
-            const { error: uploadError } = await supabase.storage
-                .from('avatars')
-                .upload(filePath, file);
+        // Validate file size (max 5MB)
+        const maxSize = 5 * 1024 * 1024;
+        if (file.size > maxSize) {
+            return { path: '', error: 'File too large. Maximum size is 5MB.' };
+        }
+
+        try {
+            const fileExt = file.type.split('/')[1]; // Use MIME type, not filename
+            const filePath = `${currentUser.id}/${Date.now()}.${fileExt}`;
+            const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file);
 
             if (uploadError) {
-                // Fallback for mocked environment or missing storage bucket:
-                // Use FileReader to create a persistent Data URL
-                logger.warn('Supabase storage upload failed, falling back to base64.', uploadError);
-
                 return new Promise((resolve) => {
                     const reader = new FileReader();
                     reader.onloadend = async () => {
-                        const base64data = reader.result as string;
-                        // Update profile safely: try profile_data first as it is schema-less
-                        const currentProfile = get().currentUser?.profile_data || {};
-                        const { error: updateError } = await get().updateProfile({
-                            // Try standard column if exists, but also save to JSONB
-                            // avatar: base64data, // Risk of invalid column
-                            profile_data: { ...currentProfile, avatar: base64data }
-                        });
-                        resolve({ path: base64data, error: updateError });
+                        const base64 = reader.result as string;
+                        const { error } = await get().updateProfile({ profile_data: { ...currentUser.profile_data, avatar: base64 } });
+                        resolve({ path: base64, error });
                     };
                     reader.readAsDataURL(file);
                 });
             }
 
-            // Get public URL
-            const { data: { publicUrl } } = supabase.storage
-                .from('avatars')
-                .getPublicUrl(filePath);
-
-            // Update profile robustly
-            const currentProfile = get().currentUser?.profile_data || {};
-            await get().updateProfile({
-                avatar_url: publicUrl, // Standard Supabase
-                profile_data: { ...currentProfile, avatar: publicUrl }
-            });
-
+            const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+            await get().updateProfile({ avatar_url: publicUrl, profile_data: { ...currentUser.profile_data, avatar: publicUrl } });
             return { path: publicUrl, error: null };
         } catch (error: any) {
-            logger.error('Avatar upload exception:', error);
+            logger.error('uploadAvatar error:', error);
             return { path: '', error };
         }
     },
+
     enrollMFA: async () => {
         try {
-            const { data, error } = await supabase.auth.mfa.enroll({
-                factorType: 'totp'
-            });
-            if (error) logger.error('MFA enrollment error:', error);
+            const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
             return { data, error };
         } catch (err: any) {
             return { data: null, error: err };
         }
     },
-    verifyMFA: async (factorId: string, challengeId: string, code: string) => {
+
+    verifyMFA: async (factorId, challengeId, code) => {
         try {
-            const { data, error } = await supabase.auth.mfa.verify({
-                factorId,
-                challengeId,
-                code
-            });
-            if (error) logger.error('MFA verification error:', error);
+            const { data, error } = await supabase.auth.mfa.verify({ factorId, challengeId, code });
             return { data, error };
         } catch (err: any) {
             return { data: null, error: err };
         }
     },
-    unenrollMFA: async (factorId: string) => {
+
+    unenrollMFA: async (factorId) => {
         try {
-            const { data, error } = await supabase.auth.mfa.unenroll({
-                factorId
-            });
-            if (error) logger.error('MFA unenrollment error:', error);
+            const { data, error } = await supabase.auth.mfa.unenroll({ factorId });
             return { data, error };
         } catch (err: any) {
             return { data: null, error: err };
         }
     },
+
     listMFAFactors: async () => {
         try {
             const { data, error } = await supabase.auth.mfa.listFactors();
-            if (error) logger.error('MFA list factors error:', error);
             return { data, error };
         } catch (err: any) {
             return { data: null, error: err };
         }
     },
-    challengeMFA: async (factorId: string) => {
+
+    challengeMFA: async (factorId) => {
         try {
             const { data, error } = await supabase.auth.mfa.challenge({ factorId });
-            if (error) logger.error('MFA challenge error:', error);
             return { data, error };
         } catch (err: any) {
             return { data: null, error: err };
         }
     },
-    getInvitation: async (inviteId: string) => {
+
+    getInvitation: async (inviteId) => {
         try {
-            const { data, error } = await supabase
-                .from('invitations')
-                .select(`
-                    *,
-                    coach:coach_id (
-                        full_name,
-                        first_name,
-                        last_name,
-                        pseudo
-                    )
-                `)
-                .eq('id', inviteId)
-                .single();
-
-            if (error) {
-                logger.error('Error fetching invitation:', error);
-                return { data: null, error };
-            }
-
-            return { data, error: null };
+            const { data, error } = await supabase.from('invitations').select('*, coach:coach_id (full_name, first_name, last_name, pseudo)').eq('id', inviteId).single();
+            return { data, error };
         } catch (err: any) {
-            logger.error('Exception fetching invitation:', err);
             return { data: null, error: err };
         }
     },
-    getCoachOfferings: async (coachId: string) => {
-        // Mock for demo mode or unconfigured Supabase
-        const isDev = import.meta.env.DEV;
-        const isSupabaseConfigured = import.meta.env.VITE_SUPABASE_URL && !import.meta.env.VITE_SUPABASE_URL.includes('placeholder');
-        if (isDev || coachId === 'demo-pro-id' || import.meta.env.VITE_DEMO_MODE === 'true' || !isSupabaseConfigured) {
-            return [
-                { id: '1', name: 'Elite Performance', price_cents: 9900, type: 'PACKAGE', duration_months: 1 },
-                { id: '2', name: 'Standard Training', price_cents: 4900, type: 'PACKAGE', duration_months: 1 },
-                { id: '3', name: 'Customized Routine', price_cents: 2900, type: 'PACKAGE', duration_months: 1 }
-            ];
-        }
 
+    getCoachOfferings: async (coachId) => {
         try {
-            const { data, error } = await supabase
-                .from('coach_offerings')
-                .select('*')
-                .eq('coach_id', coachId)
-                .order('created_at', { ascending: true });
-
-            if (error) {
-                logger.error('Error fetching offerings:', error);
-                return [];
-            }
+            const { data, error } = await supabase.from('coach_offerings').select('*').eq('coach_id', coachId).order('created_at', { ascending: true });
+            if (error) logger.error('getCoachOfferings error:', error);
             return data || [];
         } catch (err) {
-            logger.error('Exception fetching offerings:', err);
+            logger.error('getCoachOfferings exception:', err);
             return [];
         }
     },
-    saveCoachOffering: async (offering: any) => {
-        try {
-            const { data, error } = await supabase
-                .from('coach_offerings')
-                .upsert([offering])
-                .select()
-                .single();
 
-            if (error) logger.error('Error saving offering:', error);
+    saveCoachOffering: async (offering) => {
+        const { currentUser } = get();
+        if (!currentUser || currentUser.role !== 'pro') {
+            return { data: null, error: 'Unauthorized: Only coaches can manage offerings' };
+        }
+
+        try {
+            // Force coach_id to current user to prevent IDOR
+            const safeOffering = { ...offering, coach_id: currentUser.id };
+            const { data, error } = await supabase.from('coach_offerings').upsert([safeOffering]).select().single();
+            if (error) logger.error('saveCoachOffering error:', error);
             return { data, error };
         } catch (err: any) {
+            logger.error('saveCoachOffering exception:', err);
             return { data: null, error: err };
         }
     },
-    deleteCoachOffering: async (offeringId: string) => {
+
+    deleteCoachOffering: async (offeringId) => {
+        const { currentUser } = get();
+        if (!currentUser || currentUser.role !== 'pro') {
+            return { error: 'Unauthorized: Only coaches can delete offerings' };
+        }
+
         try {
+            // Only delete if owned by current user
             const { error } = await supabase
                 .from('coach_offerings')
                 .delete()
-                .eq('id', offeringId);
-
-            if (error) logger.error('Error deleting offering:', error);
+                .eq('id', offeringId)
+                .eq('coach_id', currentUser.id);
+            if (error) logger.error('deleteCoachOffering error:', error);
             return { error };
         } catch (err: any) {
+            logger.error('deleteCoachOffering exception:', err);
             return { error: err };
         }
     },
-    getCoachResources: async (coachId: string) => {
-        try {
-            const { data, error } = await supabase
-                .from('coach_resources')
-                .select('*')
-                .eq('coach_id', coachId)
-                .order('created_at', { ascending: false });
 
-            if (error) {
-                logger.error('Error fetching resources:', error);
-                return [];
-            }
+    getCoachResources: async (coachId) => {
+        try {
+            const { data, error } = await supabase.from('coach_resources').select('*').eq('coach_id', coachId).order('created_at', { ascending: false });
+            if (error) logger.error('getCoachResources error:', error);
             return data || [];
         } catch (err) {
-            logger.error('Exception fetching resources:', err);
+            logger.error('getCoachResources exception:', err);
             return [];
         }
     },
+
     getSharedResources: async () => {
         try {
-            const { data, error } = await supabase
-                .from('coach_resources')
-                .select('*')
-                .eq('is_public', true)
-                .order('created_at', { ascending: false });
-
-            if (error) {
-                logger.error('Error fetching shared resources:', error);
-                return [];
-            }
+            const { data, error } = await supabase.from('coach_resources').select('*').eq('is_public', true).order('created_at', { ascending: false });
+            if (error) logger.error('getSharedResources error:', error);
             return data || [];
         } catch (err) {
-            logger.error('Exception fetching shared resources:', err);
+            logger.error('getSharedResources exception:', err);
             return [];
         }
     },
-    saveCoachResource: async (resource: any) => {
-        try {
-            const { data, error } = await supabase
-                .from('coach_resources')
-                .upsert([resource])
-                .select()
-                .single();
 
-            if (error) logger.error('Error saving resource:', error);
+    saveCoachResource: async (resource) => {
+        const { currentUser } = get();
+        if (!currentUser || currentUser.role !== 'pro') {
+            return { data: null, error: 'Unauthorized: Only coaches can manage resources' };
+        }
+
+        try {
+            // Force coach_id to current user to prevent IDOR
+            const safeResource = { ...resource, coach_id: currentUser.id };
+            const { data, error } = await supabase.from('coach_resources').upsert([safeResource]).select().single();
+            if (error) logger.error('saveCoachResource error:', error);
             return { data, error };
         } catch (err: any) {
+            logger.error('saveCoachResource exception:', err);
             return { data: null, error: err };
         }
     },
-    deleteCoachResource: async (resourceId: string) => {
+
+    deleteCoachResource: async (resourceId) => {
+        const { currentUser } = get();
+        if (!currentUser || currentUser.role !== 'pro') {
+            return { error: 'Unauthorized: Only coaches can delete resources' };
+        }
+
         try {
+            // Only delete if owned by current user
             const { error } = await supabase
                 .from('coach_resources')
                 .delete()
-                .eq('id', resourceId);
-
-            if (error) logger.error('Error deleting resource:', error);
+                .eq('id', resourceId)
+                .eq('coach_id', currentUser.id);
+            if (error) logger.error('deleteCoachResource error:', error);
             return { error };
         } catch (err: any) {
+            logger.error('deleteCoachResource exception:', err);
             return { error: err };
         }
     },
+
     setShowInviteModal: (show: boolean) => set({ showInviteModal: show })
 }));

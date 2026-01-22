@@ -210,15 +210,114 @@ export const checkPermission = async (userId: string, resourceType: string, reso
 };
 
 /**
- * Encrypt sensitive data (client-side)
+ * Encrypt sensitive data (client-side) using AES-GCM
  */
-export const encryptData = async (data: any): Promise<any> => {
-    return data;
+export const encryptData = async (data: any): Promise<string> => {
+    try {
+        const text = JSON.stringify(data);
+        const encoder = new TextEncoder();
+        const encodedData = encoder.encode(text);
+
+        // Generate a random IV
+        const iv = window.crypto.getRandomValues(new Uint8Array(12));
+
+        // In a real app, this key would be derived from the user's password or stored in a secure vault
+        // CRITICAL: VITE_APP_MASTER_KEY must be set in production
+        const secret = import.meta.env.VITE_APP_MASTER_KEY;
+        if (!secret) {
+            if (import.meta.env.PROD) {
+                throw new Error('Security Error: Encryption key not configured. Set VITE_APP_MASTER_KEY in environment.');
+            }
+            // Development fallback only
+            console.warn('⚠️ Using development fallback encryption key. Do not use in production!');
+        }
+        const encryptionSecret = secret || 'dev-only-insecure-key-do-not-use-in-prod';
+        const keyMaterial = await window.crypto.subtle.importKey(
+            'raw',
+            encoder.encode(encryptionSecret),
+            'PBKDF2',
+            false,
+            ['deriveKey']
+        );
+
+        const key = await window.crypto.subtle.deriveKey(
+            {
+                name: 'PBKDF2',
+                salt: encoder.encode('more-training-salt'),
+                iterations: 100000,
+                hash: 'SHA-256'
+            },
+            keyMaterial,
+            { name: 'AES-GCM', length: 256 },
+            false,
+            ['encrypt']
+        );
+
+        const ciphertext = await window.crypto.subtle.encrypt(
+            { name: 'AES-GCM', iv },
+            key,
+            encodedData
+        );
+
+        // Concatenate IV and ciphertext
+        const combined = new Uint8Array(iv.length + ciphertext.byteLength);
+        combined.set(iv);
+        combined.set(new Uint8Array(ciphertext), iv.length);
+
+        return btoa(String.fromCharCode(...combined));
+    } catch (err) {
+        logger.error('Encryption failed:', err);
+        throw new Error('Security Error: Failed to protect sensitive data');
+    }
 };
 
 /**
- * Decrypt sensitive data (client-side)
+ * Decrypt sensitive data (client-side) using AES-GCM
  */
-export const decryptData = async (encryptedData: any): Promise<any> => {
-    return encryptedData;
+export const decryptData = async (encryptedData: string): Promise<any> => {
+    try {
+        const combined = new Uint8Array(atob(encryptedData).split('').map(char => char.charCodeAt(0)));
+        const iv = combined.slice(0, 12);
+        const ciphertext = combined.slice(12);
+
+        const encoder = new TextEncoder();
+        const secret = import.meta.env.VITE_APP_MASTER_KEY;
+        if (!secret && import.meta.env.PROD) {
+            throw new Error('Security Error: Encryption key not configured.');
+        }
+        const encryptionSecret = secret || 'dev-only-insecure-key-do-not-use-in-prod';
+
+        const keyMaterial = await window.crypto.subtle.importKey(
+            'raw',
+            encoder.encode(encryptionSecret),
+            'PBKDF2',
+            false,
+            ['deriveKey']
+        );
+
+        const key = await window.crypto.subtle.deriveKey(
+            {
+                name: 'PBKDF2',
+                salt: encoder.encode('more-training-salt'),
+                iterations: 100000,
+                hash: 'SHA-256'
+            },
+            keyMaterial,
+            { name: 'AES-GCM', length: 256 },
+            false,
+            ['decrypt']
+        );
+
+        const decrypted = await window.crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv },
+            key,
+            ciphertext
+        );
+
+        const decoder = new TextDecoder();
+        return JSON.parse(decoder.decode(decrypted));
+    } catch (err) {
+        logger.error('Decryption failed:', err);
+        return null;
+    }
 };

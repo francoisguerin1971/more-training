@@ -10,7 +10,7 @@ import { useLanguage } from '@/shared/context/LanguageContext';
 import { useAuthStore } from '@/features/auth/stores/authStore';
 import { LanguageDropdown } from '@/shared/components/common/LanguageDropdown';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 export function GlobalInviteModal() {
     const { t } = useLanguage();
@@ -102,40 +102,73 @@ export function GlobalInviteModal() {
         }
     };
 
-    const downloadTemplate = () => {
-        const headers = ["Email", "First Name", "Last Name", "Sport", "Role"];
-        const data = [["john.doe@example.com", "John", "Doe", "Running", "athlete"]];
-        const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Invitations");
-        XLSX.writeFile(wb, "template_invitations.xlsx");
+    const downloadTemplate = async () => {
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Invitations');
+        worksheet.columns = [
+            { header: 'Email', key: 'email', width: 30 },
+            { header: 'First Name', key: 'first_name', width: 15 },
+            { header: 'Last Name', key: 'last_name', width: 15 },
+            { header: 'Sport', key: 'sport', width: 15 },
+            { header: 'Role', key: 'role', width: 10 }
+        ];
+        worksheet.addRow({ email: 'john.doe@example.com', first_name: 'John', last_name: 'Doe', sport: 'Running', role: 'athlete' });
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'template_invitations.xlsx';
+        a.click();
+        URL.revokeObjectURL(url);
     };
 
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-            const bstr = evt.target?.result;
-            const wb = XLSX.read(bstr, { type: 'binary' });
-            const ws = wb.Sheets[wb.SheetNames[0]];
-            const data: any[] = XLSX.utils.sheet_to_json(ws);
-            if (data.length > 0) {
-                const newInvitees = data.map((row, idx) => ({
-                    id: `import-${idx}`,
-                    email: row.Email || row.email || '',
-                    first_name: row["First Name"] || row["first_name"] || '',
-                    last_name: row["Last Name"] || row["last_name"] || '',
-                    sport: row.Sport || 'Running',
-                    role: (row.Role || 'athlete').toLowerCase() === 'coach' && isPro ? 'coach' : 'athlete'
-                })).filter(inv => inv.email);
-                if (newInvitees.length > 0) {
-                    setInvitees(newInvitees);
-                    toast.success(`${newInvitees.length} participants importés.`);
-                }
+
+        try {
+            const workbook = new ExcelJS.Workbook();
+            await workbook.xlsx.load(await file.arrayBuffer());
+            const worksheet = workbook.worksheets[0];
+
+            if (!worksheet) {
+                toast.error('Fichier invalide');
+                return;
             }
-        };
-        reader.readAsBinaryString(file);
+
+            const rows: any[] = [];
+            worksheet.eachRow((row, rowNumber) => {
+                if (rowNumber === 1) return; // Skip header
+                const values = row.values as any[];
+                rows.push({
+                    email: values[1] || '',
+                    first_name: values[2] || '',
+                    last_name: values[3] || '',
+                    sport: values[4] || 'Running',
+                    role: values[5] || 'athlete'
+                });
+            });
+
+            const newInvitees = rows.map((row, idx) => ({
+                id: `import-${idx}`,
+                email: row.email,
+                first_name: row.first_name,
+                last_name: row.last_name,
+                sport: row.sport,
+                customSport: '',
+                role: (row.role || 'athlete').toLowerCase() === 'coach' && isPro ? 'coach' : 'athlete'
+            })).filter(inv => inv.email);
+
+            if (newInvitees.length > 0) {
+                setInvitees(newInvitees);
+                toast.success(`${newInvitees.length} participants importés.`);
+            }
+        } catch (err) {
+            console.error('Excel import error:', err);
+            toast.error('Erreur lors de l\'import du fichier');
+        }
     };
 
     return (
@@ -153,7 +186,7 @@ export function GlobalInviteModal() {
                                 {isPro ? t('invite_athlete') : t('invite_partners')}
                             </h2>
                             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-                                {inviteStep === 1 ? (isPro ? "Configuration des bénéficiaires" : t('invite_friends')) : "Offre suggérée"}
+                                {inviteStep === 1 ? (isPro ? t('invite_config_recipients') : t('invite_friends')) : t('invite_suggested_offer')}
                             </p>
                         </div>
                     </div>
@@ -172,7 +205,6 @@ export function GlobalInviteModal() {
                 <div className="flex-1 flex flex-col overflow-hidden">
                     <form onSubmit={handleInviteSubmit} className="flex-1 flex flex-col overflow-hidden">
                         <div className="flex-1 overflow-y-auto px-8 md:px-10 pt-10 pb-8 scrollbar-hide">
-                            <style dangerouslySetInnerHTML={{ __html: `.scrollbar-hide::-webkit-scrollbar { display: none; } .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }` }} />
 
                             <div className="grid grid-cols-1 lg:grid-cols-4 gap-12">
                                 <div className="lg:col-span-3 space-y-8">
@@ -184,9 +216,9 @@ export function GlobalInviteModal() {
                                                     <FileSpreadsheet size={24} />
                                                 </div>
                                                 <div className="flex-1">
-                                                    <p className="text-xs font-black text-white uppercase tracking-widest mb-1">Import de masse</p>
+                                                    <p className="text-xs font-black text-white uppercase tracking-widest mb-1">{t('invite_mass_import')}</p>
                                                     <p className="text-[11px] text-slate-500 leading-relaxed">
-                                                        {t('invite_excel_purpose')} Simplifiez vos invitations en important votre liste de contacts.
+                                                        {t('invite_excel_purpose')} {t('invite_mass_import_desc')}
                                                     </p>
                                                     <div className="flex items-center gap-3 mt-3">
                                                         <button
@@ -194,7 +226,7 @@ export function GlobalInviteModal() {
                                                             onClick={downloadTemplate}
                                                             className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 text-slate-300 hover:text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all"
                                                         >
-                                                            <Download size={14} /> Modèle Excel
+                                                            <Download size={14} /> {t('invite_excel_template')}
                                                         </button>
                                                         <button
                                                             type="button"
@@ -211,14 +243,14 @@ export function GlobalInviteModal() {
                                             <div className="flex justify-between items-center pt-2">
                                                 <h3 className="text-xs font-black text-white uppercase tracking-[0.2em] flex items-center gap-2">
                                                     <Users size={16} className="text-emerald-500" />
-                                                    {isPro ? t('participants_tab') : "PARTENAIRES"}
+                                                    {isPro ? t('participants_tab') : t('invite_partners_label')}
                                                 </h3>
                                                 <button
                                                     type="button"
                                                     onClick={addInviteeRow}
                                                     className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-slate-950 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-500/10"
                                                 >
-                                                    <PlusCircle size={14} /> Ajouter un contact
+                                                    <PlusCircle size={14} /> {t('invite_add_contact')}
                                                 </button>
                                             </div>
 
@@ -290,7 +322,7 @@ export function GlobalInviteModal() {
                                                             </div>
                                                         </div>
                                                         <div className="col-span-2 space-y-1">
-                                                            <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest ml-1">Rôle</label>
+                                                            <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest ml-1">{t('role_label')}</label>
                                                             <div className="flex bg-black/40 p-1 rounded-lg border border-white/10 h-9">
                                                                 <button
                                                                     type="button"
@@ -348,12 +380,12 @@ export function GlobalInviteModal() {
                                                             {globalSuggestedPlan === 'none' ? <Check size={24} strokeWidth={4} /> : <X size={20} />}
                                                         </div>
                                                         <div className="text-left">
-                                                            <div className="text-sm font-black text-white uppercase tracking-tight">Aucun abonnement suggéré</div>
-                                                            <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Accès Standard Gratuit</div>
+                                                            <div className="text-sm font-black text-white uppercase tracking-tight">{t('invite_no_plan')}</div>
+                                                            <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">{t('invite_free_access')}</div>
                                                         </div>
                                                     </div>
                                                     <div className="text-right">
-                                                        <div className="text-xl font-black text-slate-700 italic uppercase">Libre</div>
+                                                        <div className="text-xl font-black text-slate-700 italic uppercase">{t('invite_free_label')}</div>
                                                     </div>
                                                 </button>
 
@@ -373,12 +405,12 @@ export function GlobalInviteModal() {
                                                             </div>
                                                             <div className="text-left">
                                                                 <div className="text-sm font-black text-white uppercase tracking-tight">{plan.name}</div>
-                                                                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Forfait Recommandé</div>
+                                                                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">{t('invite_recommended_package')}</div>
                                                             </div>
                                                         </div>
                                                         <div className="text-right">
                                                             <div className="text-xl font-black text-emerald-400">€{plan.price_cents / 100}</div>
-                                                            <div className="text-[9px] text-slate-600 font-black uppercase tracking-widest">/ Mois</div>
+                                                            <div className="text-[9px] text-slate-600 font-black uppercase tracking-widest">{t('per_month')}</div>
                                                         </div>
                                                     </button>
                                                 ))}
@@ -403,18 +435,18 @@ export function GlobalInviteModal() {
                                         <div>
                                             <h4 className="text-[9px] font-black text-slate-600 uppercase tracking-widest flex items-center gap-3 mb-4">
                                                 <Activity size={14} className="text-indigo-400" />
-                                                SUMMARY
+                                                {t('invite_summary')}
                                             </h4>
                                             <div className="flex items-baseline gap-2">
                                                 <span className="text-4xl font-black text-white leading-none">{invitees.length}</span>
-                                                <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Invités</span>
+                                                <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">{t('invite_invitees')}</span>
                                             </div>
                                         </div>
 
                                         {isPro && (
                                             <div className="space-y-3 border-t border-white/5 pt-6">
                                                 <div className="flex justify-between items-center text-[8px] font-black text-slate-700 uppercase tracking-widest">
-                                                    <span>Progression</span>
+                                                    <span>{t('invite_progression')}</span>
                                                     <span>{inviteStep}/2</span>
                                                 </div>
                                                 <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
