@@ -10,6 +10,7 @@ import { InfoTooltip } from '@/shared/components/ui/InfoTooltip';
 import { useTraining } from '@/features/planner/contexts/TrainingContext';
 import { useAuthStore } from '@/features/auth/stores/authStore';
 import { useMessages } from '@/shared/context/MessageContext';
+import { useLanguage } from '@/shared/context/LanguageContext';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { addDays, format, startOfToday } from 'date-fns';
 import { cn } from '@/shared/lib/utils';
@@ -34,14 +35,9 @@ import { translations } from '@/core/services/translations';
 
 export function AIPlanGenerator() {
     const { plans, savePlan, deletePlan } = useTraining();
-    const { currentUser, getAthletesForCoach, getAthleteTrainingHistory, getAthleteStats, currentLocale } = useAuthStore();
+    const { currentUser, getAthletesForCoach, getAthleteTrainingHistory, getAthleteStats } = useAuthStore();
     const { sendMessage } = useMessages();
-
-    // Translation Helper
-    const t = (key: string) => {
-        // @ts-ignore
-        return (translations && translations[currentLocale || 'en'] && translations[currentLocale || 'en'][key]) || key;
-    };
+    const { t, language } = useLanguage();
 
     // Localized Exercise Library
     const getExerciseLibrary = () => ({
@@ -74,10 +70,12 @@ export function AIPlanGenerator() {
     const [biometrics, setBiometrics] = useState<Biometrics>({ age: '', weight: '', height: '', gender: 'male' });
     const [sportObjectives, setSportObjectives] = useState<SportObjectives>({
         primarySport: 'Running',
-        crossTraining: [], // ['Natation', 'Vélo', 'Yoga', 'Renforcement']
+        crossTraining: [],
         objective: 'Competition',
         level: 'Intermédiaire',
-        targetEvent: ''
+        targetEvent: '',
+        otherSport: '',
+        otherCrossTraining: ''
     });
     const [availability, setAvailability] = useState<Availability>({
         days: [],
@@ -96,14 +94,16 @@ export function AIPlanGenerator() {
         gymAccess: false,
         poolAccess: false,
         trackAccess: false,
-        environment: 'mixed' // urban, nature, mixed
+        environment: 'mixed',
+        otherEquipment: ''
     });
     const [healthRecovery, setHealthRecovery] = useState<HealthRecovery>({
         injuries: '',
         sleepQuality: 'good',
         hrvStatus: 'stable',
-        recoveryPreferences: [], // ['Massage', 'Yoga', 'Étirements', 'Cryothérapie']
-        nutritionConstraints: ''
+        recoveryPreferences: [],
+        nutritionConstraints: '',
+        otherRecovery: ''
     });
     const [coachPreferences, setCoachPreferences] = useState<CoachPreferences>({
         coachStyle: '',
