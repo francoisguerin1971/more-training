@@ -1,23 +1,34 @@
 import React, { useState } from 'react';
 import { Card } from '@/shared/components/ui/Card';
 import {
-    Calendar, Clock, Dumbbell, Trash2, Edit3,
-    ChevronRight, Save, Plus, Tag, Flame,
-    LayoutGrid, List, GripVertical, Copy, MoreHorizontal
+    Calendar, Dumbbell, Trash2, Edit3,
+    Save, Plus, Tag, Flame, Map, Clock, Activity,
+    Box, Youtube, BookOpen
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { format, startOfWeek, addDays, isSameDay, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Reorder, AnimatePresence, motion } from 'framer-motion';
-import { SessionBuilderModal } from './SessionBuilderModal';
+import { ExerciseSketch } from './ExerciseSketch';
+import { ExerciseSketchService } from '@/shared/services/ExerciseSketchService';
+
+interface Exercise {
+    id?: string;
+    name: string;
+    description?: string;
+    sets?: number;
+    reps?: string | number;
+    duration?: string;
+    rest?: string;
+    intensity?: string;
+    notes?: string;
+    sketch_url?: string;
+    category?: string;
+}
 
 interface Session {
     id: string;
-    date: string | Date; // Date can be string from JSON or Date object
+    date: Date;
     title: string;
-    description?: string;
-    duration?: number; // minutes
-    intensity?: string;
     medal?: string;
     details: {
         warmup: string;
@@ -25,262 +36,257 @@ interface Session {
         cooldown: string;
         tech_focus?: string;
     };
-    exercises?: any[];
+    intensity: string;
+    visual?: string;
+    exercises?: Exercise[];
+    resources?: {
+        article?: string;
+        video?: string;
+    };
 }
 
 interface PlanEditorProps {
     sessions: Session[];
     onUpdate: (id: string, updates: Partial<Session>) => void;
     onDelete: (id: string) => void;
-    onInsert: (date?: Date) => void; // Optional date for drag-drop/calendar clicks
+    onInsert: () => void;
 }
 
 export function PlanEditor({ sessions, onUpdate, onDelete, onInsert }: PlanEditorProps) {
-    const [view, setView] = useState<'week' | 'list'>('week');
-    const [editingSession, setEditingSession] = useState<Session | null>(null);
-    const [hoveredDate, setHoveredDate] = useState<Date | null>(null);
+    const [editingId, setEditingId] = useState<string | null>(null);
 
-    // Group sessions by date for Week View
-    // Normalize date to string YYYY-MM-DD for grouping
-    const normalizeDate = (d: string | Date) => format(new Date(d), 'yyyy-MM-dd');
-
-    // Ensure sessions are handled correctly whether date is string or object
-    const sortedSessions = [...sessions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-    // Get current week range (assuming the plan starts from the first session or today)
-    const startDate = sortedSessions.length > 0 ? startOfWeek(new Date(sortedSessions[0].date), { weekStartsOn: 1 }) : startOfWeek(new Date(), { weekStartsOn: 1 });
-    const weekDays = Array.from({ length: 7 }).map((_, i) => addDays(startDate, i));
-
-    const handleSaveSession = (updatedSession: Session) => {
-        if (updatedSession.id) {
-            onUpdate(updatedSession.id, updatedSession);
-        }
-        setEditingSession(null);
+    const getSketchUrl = (exercise: Exercise): string => {
+        if (exercise.sketch_url) return exercise.sketch_url;
+        return ExerciseSketchService.getSketchForExercise(exercise.name, exercise.category || 'running');
     };
 
     return (
-        <div className="space-y-6">
-            {/* Header / Toolbar */}
-            <div className="flex items-center justify-between bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
-                <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-                        <Calendar size={20} />
-                    </div>
-                    <div>
-                        <h3 className="text-sm font-black text-white uppercase tracking-tight">Éditeur de Planification</h3>
-                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{sessions.length} Séances • {format(startDate, 'MMMM yyyy', { locale: fr })}</p>
-                    </div>
+        <div className="space-y-12">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-6">
+                <div>
+                    <h3 className="text-2xl font-black text-white uppercase tracking-tighter flex items-center gap-3">
+                        <Calendar className="text-emerald-400" size={32} />
+                        Plan d'Entraînement Détaillé
+                    </h3>
+                    <p className="text-slate-500 font-medium text-sm mt-1">
+                        {sessions.length} séances programmées pour votre réussite.
+                    </p>
                 </div>
-
-                <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
-                    <button
-                        onClick={() => setView('week')}
-                        className={cn("px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-2", view === 'week' ? "bg-slate-800 text-white shadow-lg" : "text-slate-500 hover:text-white")}
-                    >
-                        <LayoutGrid size={14} /> Semaine
-                    </button>
-                    <button
-                        onClick={() => setView('list')}
-                        className={cn("px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-2", view === 'list' ? "bg-slate-800 text-white shadow-lg" : "text-slate-500 hover:text-white")}
-                    >
-                        <List size={14} /> Liste
-                    </button>
-                </div>
+                <button
+                    onClick={onInsert}
+                    className="px-8 py-3 bg-emerald-500 text-slate-950 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transform hover:scale-105 transition-all shadow-xl shadow-emerald-500/20 flex items-center gap-2"
+                >
+                    <Plus size={18} strokeWidth={3} /> Ajouter une session
+                </button>
             </div>
 
-            {/* Content Area */}
-            <AnimatePresence mode="wait">
-                {view === 'week' ? (
-                    <motion.div
-                        key="week"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="grid grid-cols-1 md:grid-cols-7 gap-4"
-                    >
-                        {weekDays.map((day, i) => {
-                            const dateKey = normalizeDate(day);
-                            const daySessions = sortedSessions.filter(s => normalizeDate(s.date) === dateKey);
-                            const isToday = isSameDay(day, new Date());
+            <div className="space-y-16">
+                {sessions.map((session, idx) => (
+                    <div key={session.id} className="relative pl-12 border-l-2 border-slate-800 pb-12 last:pb-0">
+                        {/* Timeline Node */}
+                        <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-slate-900 border-2 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
 
-                            return (
-                                <div
-                                    key={day.toISOString()}
-                                    className={cn(
-                                        "min-h-[300px] rounded-2xl border flex flex-col transition-all",
-                                        isToday ? "bg-emerald-500/5 border-emerald-500/30" : "bg-slate-900/40 border-slate-800 hover:bg-slate-900/60"
-                                    )}
-                                    onClick={() => onInsert(day)} // Click background to add to this day
-                                >
-                                    {/* Day Header */}
-                                    <div className={cn(
-                                        "p-3 border-b text-center",
-                                        isToday ? "border-emerald-500/20 bg-emerald-500/10" : "border-slate-800/50"
-                                    )}>
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block mb-1">
-                                            {format(day, 'EEE', { locale: fr })}
-                                        </span>
-                                        <span className={cn(
-                                            "text-lg font-black",
-                                            isToday ? "text-emerald-400" : "text-white"
-                                        )}>
-                                            {format(day, 'dd')}
-                                        </span>
+                        <div className="space-y-8 animate-in slide-in-from-left-4 duration-500" style={{ animationDelay: `${idx * 50}ms` }}>
+                            {/* Session Header */}
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div className="flex items-center gap-6">
+                                    <div className="w-20 h-20 rounded-[28px] bg-slate-950 border border-slate-800 flex flex-col items-center justify-center shrink-0">
+                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{format(new Date(session.date), 'MMM', { locale: fr })}</span>
+                                        <span className="text-3xl font-black text-white -mt-1">{format(new Date(session.date), 'dd')}</span>
+                                        <span className="text-[10px] font-bold text-emerald-500 uppercase">{format(new Date(session.date), 'EEEE', { locale: fr })}</span>
                                     </div>
-
-                                    {/* Sessions Container */}
-                                    <div className="p-2 flex-1 space-y-2">
-                                        {daySessions.map(session => (
-                                            <motion.div
-                                                layoutId={session.id}
-                                                key={session.id}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setEditingSession(session);
-                                                }}
-                                                whileHover={{ scale: 1.02 }}
-                                                className="bg-slate-800 border border-slate-700 p-3 rounded-xl cursor-pointer group hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-500/10 transition-all relative overflow-hidden"
-                                            >
-                                                {/* Intensity Strip */}
-                                                <div className={cn(
-                                                    "absolute left-0 top-0 bottom-0 w-1",
-                                                    session.intensity === 'VO2 Max' ? "bg-red-500" :
-                                                        session.intensity === 'Seuil' ? "bg-orange-500" :
-                                                            session.intensity === 'Endurance Fondamentale' ? "bg-emerald-500" :
-                                                                "bg-blue-500"
-                                                )} />
-
-                                                <div className="pl-2">
-                                                    <h5 className="font-bold text-xs text-white line-clamp-2 leading-tight mb-1">
-                                                        {session.title}
-                                                    </h5>
-
-                                                    {session.details.main && (
-                                                        <p className="text-[9px] text-slate-400 line-clamp-2 mb-2">
-                                                            {session.details.main}
-                                                        </p>
-                                                    )}
-
-                                                    <div className="flex items-center gap-2 mt-auto">
-                                                        {session.exercises && session.exercises.length > 0 && (
-                                                            <span className="flex items-center gap-1 text-[8px] font-black text-slate-500 bg-slate-950 px-1.5 py-0.5 rounded uppercase">
-                                                                <Dumbbell size={8} /> {session.exercises.length}
-                                                            </span>
-                                                        )}
-                                                        {session.details.tech_focus && (
-                                                            <span className="flex items-center gap-1 text-[8px] font-black text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded uppercase border border-indigo-500/20">
-                                                                <Tag size={8} /> Tech
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                {/* Hover actions */}
-                                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            onDelete(session.id);
-                                                        }}
-                                                        className="p-1 bg-red-500/20 text-red-400 rounded hover:bg-red-500 hover:text-white"
-                                                    >
-                                                        <Trash2 size={10} />
-                                                    </button>
-                                                </div>
-                                            </motion.div>
-                                        ))}
-
-                                        {/* Add Button Hint (hover) */}
-                                        <div className="h-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                                            <div className="text-slate-600 text-[10px] font-black uppercase flex items-center gap-1">
-                                                <Plus size={10} /> Ajouter
-                                            </div>
+                                    <div>
+                                        <div className="flex items-center gap-3 mb-1">
+                                            <h4 className="text-2xl font-black text-white uppercase tracking-tight">{session.title}</h4>
+                                            {session.medal && (
+                                                <span className={cn(
+                                                    "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.2em] border",
+                                                    session.medal === 'Or' ? "bg-yellow-500/10 border-yellow-500/50 text-yellow-500" :
+                                                        session.medal === 'Argent' ? "bg-slate-300/10 border-slate-300/50 text-slate-300" :
+                                                            "bg-orange-500/10 border-orange-500/50 text-orange-500"
+                                                )}>
+                                                    🏆 {session.medal}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            <span className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-widest">
+                                                <Flame size={14} className="text-orange-500" /> {session.intensity}
+                                            </span>
+                                            {session.details.tech_focus && (
+                                                <span className="flex items-center gap-1.5 text-xs font-bold text-indigo-400 uppercase tracking-widest">
+                                                    <Tag size={14} /> {session.details.tech_focus}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
-                            );
-                        })}
-                    </motion.div>
-                ) : (
-                    <motion.div
-                        key="list"
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 10 }}
-                        className="space-y-3"
-                    >
-                        <Reorder.Group axis="y" values={sortedSessions} onReorder={(newOrder) => {
-                            // Reorder logic would go here if we were reordering the array directly
-                            // For date-based sessions, drag-drop usually effectively changes the DATE
-                            // Implementation of full drag-to-reorder-date is complex but let's provide visual list
-                            console.log("Reorder not fully implemented for date change in list view");
-                        }}>
-                            {sortedSessions.map(session => (
-                                <Reorder.Item key={session.id} value={session}>
-                                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center gap-6 hover:border-slate-700 transition-all group">
-                                        <div className="cursor-grab active:cursor-grabbing text-slate-600 hover:text-white">
-                                            <GripVertical size={20} />
-                                        </div>
 
-                                        <div className="w-16 h-16 rounded-xl bg-slate-950 border border-slate-800 flex flex-col items-center justify-center shrink-0">
-                                            <span className="text-[10px] font-black text-slate-500 uppercase">
-                                                {format(new Date(session.date), 'MMM', { locale: fr })}
-                                            </span>
-                                            <span className="text-xl font-black text-white">
-                                                {format(new Date(session.date), 'dd')}
-                                            </span>
-                                        </div>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setEditingId(session.id === editingId ? null : session.id)}
+                                        className="p-3 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl transition-all border border-slate-700"
+                                    >
+                                        <Edit3 size={18} />
+                                    </button>
+                                    <button
+                                        onClick={() => onDelete(session.id)}
+                                        className="p-3 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white rounded-2xl transition-all border border-rose-500/20"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
+                                </div>
+                            </div>
 
-                                        <div className="flex-1">
-                                            <h4 className="font-bold text-white uppercase text-lg">{session.title}</h4>
-                                            <div className="flex items-center gap-4 mt-1">
-                                                <span className="text-xs text-slate-400 flex items-center gap-1">
-                                                    <Clock size={12} /> {session.duration || 60} min
-                                                </span>
-                                                <span className="text-xs text-slate-400 flex items-center gap-1">
-                                                    <Flame size={12} /> {session.intensity || 'Modéré'}
-                                                </span>
+                            {/* Session Content Grid */}
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                {/* Details Column */}
+                                <div className="lg:col-span-1 space-y-6">
+                                    <div className="space-y-4">
+                                        <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6 space-y-4">
+                                            <div>
+                                                <h5 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
+                                                    <Activity size={12} /> Échauffement
+                                                </h5>
+                                                <p className="text-xs text-slate-300 leading-relaxed font-medium">{session.details.warmup || 'Non spécifié'}</p>
+                                            </div>
+                                            <div className="pt-4 border-t border-slate-800/50">
+                                                <h5 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
+                                                    <Activity size={12} /> Retour au calme
+                                                </h5>
+                                                <p className="text-xs text-slate-300 leading-relaxed font-medium">{session.details.cooldown || 'Non spécifié'}</p>
                                             </div>
                                         </div>
 
-                                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button
-                                                onClick={() => setEditingSession(session)}
-                                                className="p-2 bg-slate-800 text-white rounded-xl hover:bg-emerald-500 transition-colors"
-                                            >
-                                                <Edit3 size={18} />
-                                            </button>
-                                            <button
-                                                onClick={() => onDelete(session.id)}
-                                                className="p-2 bg-slate-800 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-colors"
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
+                                        {session.resources && (
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-3 flex items-center gap-3">
+                                                    <Youtube size={16} className="text-red-500" />
+                                                    <span className="text-[10px] font-black text-slate-400 uppercase">Vidéo Tech</span>
+                                                </div>
+                                                <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-3 flex items-center gap-3">
+                                                    <BookOpen size={16} className="text-blue-500" />
+                                                    <span className="text-[10px] font-black text-slate-400 uppercase">Article</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Exercises Column */}
+                                <div className="lg:col-span-2 space-y-4">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                                            <Dumbbell size={14} /> Corps de Séance & Exercices
+                                        </h5>
+                                    </div>
+
+                                    {session.exercises && session.exercises.length > 0 ? (
+                                        <div className="space-y-6">
+                                            {/* Main Description */}
+                                            <p className="text-sm text-slate-200 font-semibold leading-relaxed bg-slate-900/80 border border-slate-800 p-6 rounded-3xl italic">
+                                                "{session.details.main}"
+                                            </p>
+
+                                            {/* Exercises Grid */}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                {session.exercises.map((ex, exIdx) => (
+                                                    <div key={ex.id || exIdx} className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden group/ex hover:border-emerald-500/30 transition-all flex flex-col">
+                                                        <ExerciseSketch
+                                                            prompt={ex.name}
+                                                            sketchUrl={getSketchUrl(ex)}
+                                                            className="h-40"
+                                                        />
+                                                        <div className="p-5 flex-1 flex flex-col justify-between">
+                                                            <div>
+                                                                <h6 className="text-sm font-black text-white uppercase tracking-tight mb-1">{ex.name}</h6>
+                                                                <p className="text-[10px] text-slate-400 line-clamp-2 mb-4 font-medium">{ex.description || ex.notes}</p>
+                                                            </div>
+                                                            <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-800">
+                                                                {ex.sets && <span className="text-[9px] font-black text-emerald-400 uppercase">{ex.sets} Blocks</span>}
+                                                                {ex.reps && <span className="text-[9px] font-black text-white uppercase">• {ex.reps} Reps</span>}
+                                                                {ex.duration && <span className="text-[9px] font-black text-indigo-400 uppercase">• {ex.duration}</span>}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-slate-900/50 border border-slate-800 border-dashed p-12 rounded-3xl text-center">
+                                            <p className="text-sm text-slate-500 font-medium">"{session.details.main}"</p>
+                                            <p className="text-[10px] text-slate-600 uppercase font-black mt-2 tracking-widest">(Aucun exercice spécifique détaillé)</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Editing Inline Form (if active) */}
+                            {editingId === session.id && (
+                                <div className="bg-slate-950 border-2 border-emerald-500/50 rounded-3xl p-8 space-y-6 animate-in zoom-in-95 duration-300 shadow-2xl shadow-emerald-500/10">
+                                    <div className="flex justify-between items-center pb-4 border-b border-slate-800">
+                                        <h5 className="font-black text-white uppercase tracking-widest text-xs flex items-center gap-2">
+                                            <Edit3 size={14} className="text-emerald-500" /> Mode Édition Expert
+                                        </h5>
+                                        <button onClick={() => setEditingId(null)} className="text-slate-500 hover:text-white"><Plus className="rotate-45" size={20} /></button>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="text-[10px] font-black text-slate-500 uppercase mb-1 block">Titre de la Séance</label>
+                                                <input
+                                                    type="text"
+                                                    value={session.title}
+                                                    onChange={(e) => onUpdate(session.id, { title: e.target.value })}
+                                                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white font-bold uppercase focus:border-emerald-500 outline-none"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black text-slate-500 uppercase mb-1 block">Intensité</label>
+                                                <input
+                                                    type="text"
+                                                    value={session.intensity}
+                                                    onChange={(e) => onUpdate(session.id, { intensity: e.target.value })}
+                                                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white font-bold focus:border-emerald-500 outline-none"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="text-[10px] font-black text-slate-500 uppercase mb-1 block">Cœur de Séance (Notes AI)</label>
+                                                <textarea
+                                                    value={session.details.main}
+                                                    onChange={(e) => onUpdate(session.id, { details: { ...session.details, main: e.target.value } })}
+                                                    className="w-full h-32 bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 font-medium focus:border-emerald-500 outline-none resize-none"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
-                                </Reorder.Item>
-                            ))}
-                        </Reorder.Group>
+                                    <div className="flex justify-end">
+                                        <button
+                                            onClick={() => setEditingId(null)}
+                                            className="px-8 py-3 bg-emerald-500 text-slate-950 font-black rounded-xl uppercase tracking-widest flex items-center gap-2"
+                                        >
+                                            <Save size={16} /> Sauvegarder les modifications
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ))}
 
-                        {sortedSessions.length === 0 && (
-                            <div className="text-center py-20 text-slate-500">
-                                <p className="text-sm font-medium">Aucune séance planifiée.</p>
-                                <button onClick={() => onInsert()} className="mt-4 text-emerald-500 font-bold uppercase text-xs hover:underline">
-                                    Créer une première séance
-                                </button>
-                            </div>
-                        )}
-                    </motion.div>
+                {sessions.length === 0 && (
+                    <div className="text-center py-32 bg-slate-900/30 border-2 border-dashed border-slate-800 rounded-[40px]">
+                        <Calendar className="mx-auto mb-6 text-slate-700" size={64} />
+                        <h4 className="text-xl font-black text-slate-500 uppercase tracking-tighter">Aucun plan généré</h4>
+                        <p className="text-slate-600 font-medium mt-2">Utilisez l'Architecte Elite pour concevoir votre programme.</p>
+                        <button onClick={onInsert} className="mt-8 px-6 py-2 bg-slate-800 hover:bg-slate-700 text-emerald-500 font-black uppercase text-[10px] tracking-widest rounded-xl transition-all">
+                            Créer manuellement
+                        </button>
+                    </div>
                 )}
-            </AnimatePresence>
-
-            {/* Session Builder Modal */}
-            <SessionBuilderModal
-                isOpen={!!editingSession}
-                initialSession={editingSession}
-                onClose={() => setEditingSession(null)}
-                onSave={handleSaveSession}
-            />
+            </div>
         </div>
     );
 }
