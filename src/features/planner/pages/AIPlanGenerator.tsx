@@ -16,60 +16,21 @@ import { cn } from '@/shared/lib/utils';
 import { ExerciseSketch } from '../components/ExerciseSketch';
 import { CoachSynthesis } from '../components/CoachSynthesis';
 import { PlanEditor } from '../components/PlanEditor';
+import {
+    PlanAnamnesis,
+    Biometrics,
+    SportObjectives,
+    Availability,
+    Periodization,
+    Equipment,
+    HealthRecovery,
+    CoachPreferences
+} from '../components/PlanAnamnesis';
 import { translations } from '@/core/services/translations';
 
 /* EXERCISE_LIBRARY moved inside component */
 
-interface Biometrics {
-    age: string;
-    weight: string;
-    height: string;
-    gender: 'male' | 'female';
-}
 
-interface SportObjectives {
-    primarySport: string;
-    crossTraining: string[];
-    objective: string;
-    level: string;
-    targetEvent: string;
-}
-
-interface Availability {
-    days: string[];
-    timePerDay: Record<string, number>;
-    preferredTime: string;
-}
-
-interface Periodization {
-    deadlineType: string;
-    deadlineValue: string;
-    deadlineDate: Date | null;
-    intensity: string;
-    loadPreference: string;
-}
-
-interface Equipment {
-    available: string[];
-    gymAccess: boolean;
-    poolAccess: boolean;
-    trackAccess: boolean;
-    environment: string;
-}
-
-interface HealthRecovery {
-    injuries: string;
-    sleepQuality: string;
-    hrvStatus: string;
-    recoveryPreferences: string[];
-    nutritionConstraints: string;
-}
-
-interface CoachPreferences {
-    coachStyle: string;
-    reportType: string;
-    customFormulas: string;
-}
 
 export function AIPlanGenerator() {
     const { plans, savePlan, deletePlan } = useTraining();
@@ -197,47 +158,48 @@ export function AIPlanGenerator() {
         );
     };
 
-    const toggleDay = (day: string) => {
-        setAvailability(prev => ({
-            ...prev,
-            days: prev.days.includes(day)
-                ? prev.days.filter(d => d !== day)
-                : [...prev.days, day]
-        }));
-    };
+    // Helper functions moved to PlanAnamnesis component
 
-    const setDayTime = (day: string, minutes: string | number) => {
-        setAvailability(prev => ({
-            ...prev,
-            timePerDay: { ...prev.timePerDay, [day]: typeof minutes === 'string' ? parseInt(minutes) : minutes || 0 }
-        }));
-    };
 
-    const toggleCrossTraining = (sport: string) => {
-        setSportObjectives(prev => ({
-            ...prev,
-            crossTraining: prev.crossTraining.includes(sport)
-                ? prev.crossTraining.filter(s => s !== sport)
-                : [...prev.crossTraining, sport]
-        }));
-    };
+    const handleAnamnesisComplete = (data: {
+        biometrics: Biometrics;
+        sportObjectives: SportObjectives;
+        availability: Availability;
+        periodization: Periodization;
+        equipment: Equipment;
+        healthRecovery: HealthRecovery;
+        coachPreferences: CoachPreferences;
+    }) => {
+        setBiometrics(data.biometrics);
+        setSportObjectives(data.sportObjectives);
+        setAvailability(data.availability);
+        setPeriodization(data.periodization);
+        setEquipment(data.equipment);
+        setHealthRecovery(data.healthRecovery);
+        setCoachPreferences(data.coachPreferences);
 
-    const toggleRecoveryPreference = (pref: string) => {
-        setHealthRecovery(prev => ({
-            ...prev,
-            recoveryPreferences: prev.recoveryPreferences.includes(pref)
-                ? prev.recoveryPreferences.filter(p => p !== pref)
-                : [...prev.recoveryPreferences, pref]
-        }));
-    };
-
-    const toggleEquipment = (eq: string) => {
-        setEquipment(prev => ({
-            ...prev,
-            available: prev.available.includes(eq)
-                ? prev.available.filter(e => e !== eq)
-                : [...prev.available, eq]
-        }));
+        // Logic split based on mode
+        if (data.coachPreferences.reportType === 'manual') {
+            // Manual Mode: Skip AI generation, go straight to Editor with empty/template session structure
+            const totalWeeks = parseInt(data.periodization.deadlineValue) || 12; // Simplified logic for manual
+            setGeneratedPlan({
+                chartData: [],
+                sessions: [],
+                meta: {
+                    objective: data.sportObjectives.objective,
+                    level: data.sportObjectives.level,
+                    total_weeks: totalWeeks,
+                    synthesis: null,
+                    recommendations: [],
+                    rationale: "Plan créé manuellement en Studio Expert."
+                }
+            });
+            setEditableSessions([]); // Start clean
+            setStep(3);
+        } else {
+            // AI Mode
+            generateAIPlan();
+        }
     };
 
     const generateAIPlan = () => {
@@ -502,401 +464,7 @@ export function AIPlanGenerator() {
         setTimeout(() => setShowSuccess(false), 5000);
     };
 
-    const renderAnamnesisForm = () => {
-        const steps = [
-            { id: 1, title: "Profil Biométrique", icon: Scale },
-            { id: 2, title: "Objectifs Sportifs", icon: Trophy },
-            { id: 3, title: "Disponibilités", icon: Calendar },
-            { id: 4, title: "Périodisation", icon: Activity },
-            { id: 5, title: "Équipement", icon: Dumbbell },
-            { id: 6, title: "Santé & Récup", icon: Stethoscope },
-            { id: 7, title: "Style & Rapport", icon: BrainCircuit }
-        ];
 
-        return (
-            <div className="space-y-8 animate-in slide-in-from-right-8 duration-500">
-                <div className="flex gap-2">
-                    {steps.map(s => (
-                        <div key={s.id} className={cn("h-1 flex-1 rounded-full transition-all", subStep >= s.id ? "bg-emerald-500" : "bg-slate-800")} />
-                    ))}
-                </div>
-
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl">
-                    <div className="flex items-center gap-4 mb-8">
-                        <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-                            {React.createElement(steps[subStep - 1].icon, { size: 24 })}
-                        </div>
-                        <div>
-                            <h3 className="text-xl font-black text-white uppercase tracking-tight">
-                                {steps[subStep - 1].title}
-                            </h3>
-                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-                                Phase de collecte de données - Étape {subStep}/7
-                            </p>
-                        </div>
-                    </div>
-
-                    {subStep === 1 && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Genre</label>
-                                <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
-                                    {[t('gender_male'), t('gender_female')].map((g, idx) => (
-                                        <button
-                                            key={g}
-                                            onClick={() => setBiometrics({ ...biometrics, gender: idx === 0 ? 'male' : 'female' })}
-                                            className={cn("flex-1 py-3 rounded-lg text-xs font-black uppercase transition-all", (biometrics.gender === 'male' && idx === 0) || (biometrics.gender === 'female' && idx === 1) ? "bg-emerald-500 text-slate-950" : "text-slate-400 hover:text-white")}
-                                        >
-                                            {g}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Âge</label>
-                                <input type="number" value={biometrics.age} onChange={e => setBiometrics({ ...biometrics, age: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-bold focus:border-emerald-500 outline-none" placeholder="ex: 30" />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Poids (kg)</label>
-                                <input type="number" value={biometrics.weight} onChange={e => setBiometrics({ ...biometrics, weight: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-bold focus:border-emerald-500 outline-none" placeholder="ex: 70" />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Taille (cm)</label>
-                                <input type="number" value={biometrics.height} onChange={e => setBiometrics({ ...biometrics, height: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-bold focus:border-emerald-500 outline-none" placeholder="ex: 180" />
-                            </div>
-                        </div>
-                    )}
-
-                    {subStep === 2 && (
-                        <div className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('anamnesis_primary_sport')}</label>
-                                    <select value={sportObjectives.primarySport} onChange={e => setSportObjectives({ ...sportObjectives, primarySport: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-bold uppercase outline-none">
-                                        <option value="Running">Running</option>
-                                        <option value="Cycling">Cyclisme</option>
-                                        <option value="Triathlon">Triathlon</option>
-                                        <option value="Swimming">Natation</option>
-                                        <option value="Trail">Trail</option>
-                                    </select>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                                        {t('anamnesis_level')}
-                                        <InfoTooltip text={t('info_level')} />
-                                    </label>
-                                    <select value={sportObjectives.level} onChange={e => setSportObjectives({ ...sportObjectives, level: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-bold uppercase outline-none">
-                                        <option value="Débutant">{t('level_beginner')}</option>
-                                        <option value="Intermédiaire">{t('level_intermediate')}</option>
-                                        <option value="Avancé">{t('level_advanced')}</option>
-                                        <option value="Élite">{t('level_elite')}</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('anamnesis_target_event')}</label>
-                                <input type="text" value={sportObjectives.targetEvent} onChange={e => setSportObjectives({ ...sportObjectives, targetEvent: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-medium focus:border-emerald-500 outline-none" placeholder="Ex: Marathon de Paris, Ironman..." />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('anamnesis_cross_training')}</label>
-                                <div className="flex flex-wrap gap-2">
-                                    {['Natation', 'Vélo', 'Yoga', 'Renforcement', 'Marche'].map(s => (
-                                        <button
-                                            key={s}
-                                            onClick={() => toggleCrossTraining(s)}
-                                            className={cn("px-4 py-2 rounded-xl text-[10px] font-black uppercase border transition-all", sportObjectives.crossTraining.includes(s) ? "bg-emerald-500/10 border-emerald-500 text-emerald-400" : "bg-slate-950 border-slate-800 text-slate-500")}
-                                        >
-                                            {s}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {subStep === 3 && (
-                        <div className="space-y-8">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('anamnesis_available_days')}</label>
-                                <div className="flex flex-wrap gap-2">
-                                    {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(d => (
-                                        <button
-                                            key={d}
-                                            onClick={() => toggleDay(d)}
-                                            className={cn("w-14 h-14 rounded-2xl text-xs font-black uppercase border transition-all flex items-center justify-center", availability.days.includes(d) ? "bg-emerald-500 text-slate-950 border-emerald-500 shadow-xl shadow-emerald-500/20" : "bg-slate-950 border-slate-800 text-slate-500")}
-                                        >
-                                            {d}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {availability.days.length > 0 && (
-                                <div className="space-y-4 animate-in fade-in slide-in-from-top-4">
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                                        {t('anamnesis_time_per_day')}
-                                        <InfoTooltip text={t('info_time')} />
-                                    </label>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        {availability.days.map(d => (
-                                            <div key={d} className="space-y-1">
-                                                <span className="text-[10px] font-bold text-slate-400 uppercase">{d}</span>
-                                                <input
-                                                    type="number"
-                                                    placeholder="90"
-                                                    value={availability.timePerDay[d] || ''}
-                                                    onChange={e => setDayTime(d, e.target.value)}
-                                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-bold focus:border-emerald-500 outline-none text-sm"
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('anamnesis_preferred_time')}</label>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                    {[
-                                        { id: 'morning', label: 'Matin' },
-                                        { id: 'noon', label: 'Midi' },
-                                        { id: 'evening', label: 'Soir' },
-                                        { id: 'flexible', label: 'Flexible' }
-                                    ].map(t => (
-                                        <button
-                                            key={t.id}
-                                            onClick={() => setAvailability({ ...availability, preferredTime: t.id })}
-                                            className={cn("py-3 rounded-xl text-[10px] font-black uppercase border transition-all", availability.preferredTime === t.id ? "bg-emerald-500/10 border-emerald-500 text-emerald-400" : "bg-slate-950 border-slate-800 text-slate-500")}
-                                        >
-                                            {t.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {subStep === 4 && (
-                        <div className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Type d'échéance</label>
-                                    <select value={periodization.deadlineType} onChange={e => setPeriodization({ ...periodization, deadlineType: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-bold uppercase outline-none">
-                                        <option value="months">Mois</option>
-                                        <option value="weeks">Semaines</option>
-                                        <option value="days">Jours</option>
-                                        <option value="years">Années</option>
-                                    </select>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Valeur</label>
-                                    <input type="number" value={periodization.deadlineValue} onChange={e => setPeriodization({ ...periodization, deadlineValue: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-bold focus:border-emerald-500 outline-none" />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Intensité Souhaitée</label>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                                    {[
-                                        { id: 'progressive', label: 'Progressive (Doux)' },
-                                        { id: 'moderate', label: 'Modérée (Standard)' },
-                                        { id: 'intensive', label: 'Intensive (Élite)' }
-                                    ].map(i => (
-                                        <button
-                                            key={i.id}
-                                            onClick={() => setPeriodization({ ...periodization, intensity: i.id })}
-                                            className={cn("py-3 rounded-xl text-[10px] font-black uppercase border transition-all", periodization.intensity === i.id ? "bg-emerald-500/10 border-emerald-500 text-emerald-400" : "bg-slate-950 border-slate-800 text-slate-500")}
-                                        >
-                                            {i.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Gestion de la Charge</label>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                                    {[
-                                        { id: 'conservative', label: 'Conservatrice' },
-                                        { id: 'balanced', label: 'Équilibrée' },
-                                        { id: 'aggressive', label: 'Aggressive' }
-                                    ].map(l => (
-                                        <button
-                                            key={l.id}
-                                            onClick={() => setPeriodization({ ...periodization, loadPreference: l.id })}
-                                            className={cn("py-3 rounded-xl text-[10px] font-black uppercase border transition-all", periodization.loadPreference === l.id ? "bg-emerald-500/10 border-emerald-500 text-emerald-400" : "bg-slate-950 border-slate-800 text-slate-500")}
-                                        >
-                                            {l.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {subStep === 5 && (
-                        <div className="space-y-6">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Équipement disponible</label>
-                                <div className="flex flex-wrap gap-2">
-                                    {['Montre GPS', 'Ceinture Cardio', 'Capteur Puissance', 'VTT', 'Vélo Route', 'Home Trainer', 'Kettlebells', 'Barre Olympique'].map(eq => (
-                                        <button
-                                            key={eq}
-                                            onClick={() => toggleEquipment(eq)}
-                                            className={cn("px-4 py-2 rounded-xl text-[10px] font-black uppercase border transition-all", equipment.available.includes(eq) ? "bg-emerald-500/10 border-emerald-500 text-emerald-400" : "bg-slate-950 border-slate-800 text-slate-500")}
-                                        >
-                                            {eq}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <Card className={cn("p-4 border border-slate-800 transition-all cursor-pointer", equipment.gymAccess ? "bg-emerald-500/5 border-emerald-500" : "bg-slate-950")} onClick={() => setEquipment({ ...equipment, gymAccess: !equipment.gymAccess })}>
-                                    <div className="flex items-center gap-3">
-                                        <Box className={equipment.gymAccess ? "text-emerald-400" : "text-slate-600"} size={18} />
-                                        <span className="text-xs font-bold text-white uppercase">Accès Salle Gym</span>
-                                    </div>
-                                </Card>
-                                <Card className={cn("p-4 border border-slate-800 transition-all cursor-pointer", equipment.poolAccess ? "bg-emerald-500/5 border-emerald-500" : "bg-slate-950")} onClick={() => setEquipment({ ...equipment, poolAccess: !equipment.poolAccess })}>
-                                    <div className="flex items-center gap-3">
-                                        <Map className={equipment.poolAccess ? "text-emerald-400" : "text-slate-600"} size={18} />
-                                        <span className="text-xs font-bold text-white uppercase">Accès Piscine</span>
-                                    </div>
-                                </Card>
-                                <Card className={cn("p-4 border border-slate-800 transition-all cursor-pointer", equipment.trackAccess ? "bg-emerald-500/5 border-emerald-500" : "bg-slate-950")} onClick={() => setEquipment({ ...equipment, trackAccess: !equipment.trackAccess })}>
-                                    <div className="flex items-center gap-3">
-                                        <LayoutGrid className={equipment.trackAccess ? "text-emerald-400" : "text-slate-600"} size={18} />
-                                        <span className="text-xs font-bold text-white uppercase">Accès Piste</span>
-                                    </div>
-                                </Card>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Environnement</label>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {['Urbain', 'Nature', 'Mixte'].map(env => (
-                                        <button
-                                            key={env}
-                                            onClick={() => setEquipment({ ...equipment, environment: env.toLowerCase() })}
-                                            className={cn("py-3 rounded-xl text-[10px] font-black uppercase border transition-all", equipment.environment === env.toLowerCase() ? "bg-emerald-500/10 border-emerald-500 text-emerald-400" : "bg-slate-950 border-slate-800 text-slate-500")}
-                                        >
-                                            {env}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {subStep === 6 && (
-                        <div className="space-y-6">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Historique de Blessures & Douleurs</label>
-                                <textarea value={healthRecovery.injuries} onChange={e => setHealthRecovery({ ...healthRecovery, injuries: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-medium focus:border-emerald-500 outline-none h-24" placeholder="Ex: Tendinite Achille gauche en 2023, fragilité lombaire..." />
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Qualité du Sommeil</label>
-                                    <select value={healthRecovery.sleepQuality} onChange={e => setHealthRecovery({ ...healthRecovery, sleepQuality: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-bold uppercase outline-none">
-                                        <option value="poor">Médiocre</option>
-                                        <option value="average">Moyen</option>
-                                        <option value="good">Bon</option>
-                                        <option value="excellent">Excellent</option>
-                                    </select>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Tendance VRC (HRV)</label>
-                                    <select value={healthRecovery.hrvStatus} onChange={e => setHealthRecovery({ ...healthRecovery, hrvStatus: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-bold uppercase outline-none">
-                                        <option value="low">Basse (Stressé)</option>
-                                        <option value="stable">Stable</option>
-                                        <option value="high">Haute (En Forme)</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Récupération Favorite</label>
-                                <div className="flex flex-wrap gap-2">
-                                    {['Massage', 'Yoga', 'Étirements', 'Cryothérapie', 'Compression'].map(p => (
-                                        <button
-                                            key={p}
-                                            onClick={() => toggleRecoveryPreference(p)}
-                                            className={cn("px-4 py-2 rounded-xl text-[10px] font-black uppercase border transition-all", healthRecovery.recoveryPreferences.includes(p) ? "bg-emerald-500/10 border-emerald-500 text-emerald-400" : "bg-slate-950 border-slate-800 text-slate-500")}
-                                        >
-                                            {p}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {subStep === 7 && (
-                        <div className="space-y-6">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Style de Coaching</label>
-                                <textarea value={coachPreferences.coachStyle} onChange={e => setCoachPreferences({ ...coachPreferences, coachStyle: e.target.value })} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-medium focus:border-emerald-500 outline-none h-24" placeholder="Ex: Directif et scientifique, ou encourageant et holistique..." />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                                    Type de Rapport IA
-                                    <InfoTooltip text={t('info_rapport')} />
-                                </label>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                                    {[
-                                        { id: 'pure-ai', label: 'IA Pure (Professionnel)' },
-                                        { id: 'ai-enhanced', label: 'IA Enrichie (Analytique)' },
-                                        { id: 'coach-style', label: 'Style Coach (Élite)' }
-                                    ].map(r => (
-                                        <button
-                                            key={r.id}
-                                            onClick={() => setCoachPreferences({ ...coachPreferences, reportType: r.id })}
-                                            className={cn("py-3 rounded-xl text-[10px] font-black uppercase border transition-all", coachPreferences.reportType === r.id ? "bg-emerald-500/10 border-emerald-500 text-emerald-400" : "bg-slate-950 border-slate-800 text-slate-500")}
-                                        >
-                                            {r.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Message aux athlètes</label>
-                                <textarea
-                                    value={messageToAthlete}
-                                    onChange={e => setMessageToAthlete(e.target.value)}
-                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white font-medium focus:border-emerald-500 outline-none h-24"
-                                    placeholder="Message qui sera envoyé avec le plan..."
-                                />
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                <div className="flex justify-between items-center pt-4">
-                    <button
-                        onClick={() => setSubStep(p => Math.max(1, p - 1))}
-                        disabled={subStep === 1}
-                        className="text-xs font-black text-slate-500 hover:text-white uppercase tracking-widest disabled:opacity-0"
-                    >
-                        Retour
-                    </button>
-
-                    {subStep < 7 ? (
-                        <button
-                            onClick={() => setSubStep(p => Math.min(7, p + 1))}
-                            className="px-8 py-3 bg-slate-800 hover:bg-slate-700 text-white font-black rounded-xl uppercase tracking-widest transition-all text-xs"
-                        >
-                            Suivant
-                        </button>
-                    ) : (
-                        <button
-                            onClick={generateAIPlan}
-                            disabled={isGenerating}
-                            className="px-10 py-4 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black rounded-xl uppercase tracking-widest transition-all shadow-xl shadow-emerald-500/20 flex items-center gap-3"
-                        >
-                            {isGenerating ? <Activity className="animate-spin" /> : <Sparkles />}
-                            Générer le Plan Élite
-                        </button>
-                    )}
-                </div>
-            </div>
-        );
-    };
 
     return (
         <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-700 pb-20">
@@ -992,7 +560,21 @@ export function AIPlanGenerator() {
                 </div>
             )}
 
-            {step === 2 && renderAnamnesisForm()}
+            {step === 2 && (
+                <PlanAnamnesis
+                    onBack={() => setStep(1)}
+                    onComplete={handleAnamnesisComplete}
+                    initialData={{
+                        biometrics,
+                        sportObjectives,
+                        availability,
+                        periodization,
+                        equipment,
+                        healthRecovery,
+                        coachPreferences
+                    }}
+                />
+            )}
 
             {step === 3 && generatedPlan && (
                 <div className="space-y-12 animate-in zoom-in-95 duration-700">
