@@ -20,7 +20,7 @@ const AthleteCalendar = lazy(() => import('@/features/calendar/pages/AthleteCale
 const AthletesList = lazy(() => import('@/features/dashboard/pages/AthletesList').then(m => ({ default: m.AthletesList })));
 const AIPlanGenerator = lazy(() => import('@/features/planner/pages/AIPlanGenerator').then(m => ({ default: m.AIPlanGenerator })));
 const ManualPlanBuilder = lazy(() => import('@/features/planner/pages/ManualPlanBuilder').then(m => ({ default: m.ManualPlanBuilder })));
-const TrainingPlanner = lazy(() => import('@/features/planner/pages/TrainingPlanner').then(m => ({ default: m.TrainingPlanner })));
+// TrainingPlanner deprecated - use AIPlanGenerator directly
 const Integrations = lazy(() => import('@/features/integrations/pages/Integrations').then(m => ({ default: m.Integrations })));
 const LiveConnection = lazy(() => import('@/features/live/pages/LiveConnection').then(m => ({ default: m.LiveConnection })));
 const Messages = lazy(() => import('@/features/messages/pages/Messages').then(m => ({ default: m.Messages })));
@@ -122,8 +122,8 @@ function App() {
                   )}
 
                   {/* Athlete / Feature Specific */}
-                  <Route path="/planner" element={<TrainingPlanner />} />
-                  <Route path="/ai-planner" element={<AIPlanGenerator />} />
+                  <Route path="/planner" element={<AIPlanGenerator />} />
+                  {/* /ai-planner route merged into /planner */}
                   <Route path="/manual-builder" element={<ManualPlanBuilder />} />
                   <Route path="/integrations" element={<Integrations />} />
                   <Route path="/live" element={<LiveConnection onClose={() => window.history.back()} />} />
