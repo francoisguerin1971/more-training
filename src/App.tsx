@@ -20,6 +20,7 @@ const AthleteCalendar = lazy(() => import('@/features/calendar/pages/AthleteCale
 const AthletesList = lazy(() => import('@/features/dashboard/pages/AthletesList').then(m => ({ default: m.AthletesList })));
 const AIPlanGenerator = lazy(() => import('@/features/planner/pages/AIPlanGenerator').then(m => ({ default: m.AIPlanGenerator })));
 const ManualPlanBuilder = lazy(() => import('@/features/planner/pages/ManualPlanBuilder').then(m => ({ default: m.ManualPlanBuilder })));
+const TrainingPlanner = lazy(() => import('@/features/planner/pages/TrainingPlanner').then(m => ({ default: m.TrainingPlanner })));
 const Integrations = lazy(() => import('@/features/integrations/pages/Integrations').then(m => ({ default: m.Integrations })));
 const LiveConnection = lazy(() => import('@/features/live/pages/LiveConnection').then(m => ({ default: m.LiveConnection })));
 const Messages = lazy(() => import('@/features/messages/pages/Messages').then(m => ({ default: m.Messages })));
@@ -30,6 +31,7 @@ const Appointments = lazy(() => import('@/features/appointments/pages/Appointmen
 const AthleteBilling = lazy(() => import('@/features/billing/pages/AthleteBilling').then(m => ({ default: m.AthleteBilling })));
 const ResourcesLibrary = lazy(() => import('@/features/resources/pages/ResourcesLibrary').then(m => ({ default: m.ResourcesLibrary })));
 const PortalSelection = lazy(() => import('@/features/auth/pages/PortalSelection').then(m => ({ default: m.PortalSelection })));
+const PublicBooking = lazy(() => import('@/features/appointments/pages/PublicBooking').then(m => ({ default: m.PublicBooking })));
 
 // Loading Fallback Component
 const PageLoading = () => (
@@ -86,6 +88,7 @@ function App() {
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/login" element={<Login onLogin={(e: string, p: string) => useAuthStore.getState().login(e, p)} />} />
                 <Route path="/marketplace" element={<CoachMarketplace onSelectCoach={() => { }} onBackToLanding={() => { }} />} />
+                <Route path="/book/:pseudo" element={<PublicBooking />} />
                 <Route path="*" element={<Navigate to="/onboarding" replace />} />
               </>
             ) : (
@@ -119,6 +122,7 @@ function App() {
                   )}
 
                   {/* Athlete / Feature Specific */}
+                  <Route path="/planner" element={<TrainingPlanner />} />
                   <Route path="/ai-planner" element={<AIPlanGenerator />} />
                   <Route path="/manual-builder" element={<ManualPlanBuilder />} />
                   <Route path="/integrations" element={<Integrations />} />

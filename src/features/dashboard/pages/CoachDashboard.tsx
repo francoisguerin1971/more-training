@@ -7,7 +7,7 @@ import {
     Calendar as CalendarIcon,
     ArrowUpRight, Target,
     Video, UserPlus, Ghost, ChevronRightIcon, ChevronLeft, Search, Tag,
-    Sun, Cloud, CloudRain, CloudLightning, ShieldAlert, PlusCircle, Trash2, AtSign, Hash, Check, X
+    Sun, Cloud, CloudRain, CloudLightning, ShieldAlert, PlusCircle, Trash2, AtSign, Hash, Check, X, RefreshCw, Bell
 } from 'lucide-react';
 import { useLanguage } from '@/shared/context/LanguageContext';
 import { useAuthStore } from '@/features/auth/stores/authStore';
@@ -19,10 +19,13 @@ import { format, formatDistanceToNow, formatDistance } from 'date-fns';
 import { fr, enUS, es, it, de, ca } from 'date-fns/locale';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CoachTechnicalForm } from '@/features/dashboard/components/CoachTechnicalForm';
+import { TrainingScienceService } from '@/features/planner/services/TrainingScienceService';
 import { UserProfile } from '@/features/auth/types';
 import { TechnicalAssessmentData, AthleteWithStats } from '../types';
 import { toast } from 'sonner';
 import { InfoTooltip } from '@/shared/components/ui/InfoTooltip';
+import { CheckinReminderModal } from '@/features/dashboard/components/CheckinReminderModal';
+import { SEO } from '@/shared/components/common/SEO';
 
 // Mock Data for "Heroes vs Ghosts" and Business Intel
 // In prod, these would come from complex DB queries or Edge Functions
@@ -56,7 +59,10 @@ export function CoachDashboard() {
     // Advanced Stats States
     const [heroes, setHeroes] = useState<ComplianceStat[]>([]);
     const [ghosts, setGhosts] = useState<ComplianceStat[]>([]);
+    const [requestingAll, setRequestingAll] = useState(false);
+    const [remindedAthleteIds, setRemindedAthleteIds] = useState<Set<string>>(new Set());
     const [opportunities, setOpportunities] = useState<{ type: 'upsell' | 'downsell', athlete: ComplianceStat }[]>([]);
+    const [showReminderModal, setShowReminderModal] = useState(false);
 
     const dateLocale = language === 'fr' ? fr : language === 'es' ? es : language === 'it' ? it : language === 'de' ? de : language === 'ca' ? ca : enUS;
 
@@ -64,13 +70,52 @@ export function CoachDashboard() {
         const loadDashboardData = async () => {
             setLoading(true);
             try {
-                if (currentUser?.id) {
-                    const coachId = currentUser.id;
+                const coachId = currentUser?.id;
+                let athletesData = [];
 
-                    const athletesData = await getAthletesForCoach(coachId);
+                if (coachId) {
+                    athletesData = await getAthletesForCoach(coachId);
+                }
 
-                    setAthletes(athletesData || []);
-                    setActiveAthletesCount(athletesData?.length || 0);
+                if (!athletesData || athletesData.length === 0) {
+                    // DEMO MODE
+                    const demoAthletes = [
+                        { id: 'mock-1', name: 'Alex Mercer', avatar: 'AM', compliance: 96, avgWeeklyHours: 12 },
+                        { id: 'mock-2', name: 'Sarah Connor', avatar: 'SC', compliance: 45, avgWeeklyHours: 4 },
+                        { id: 'mock-3', name: 'Marcus Fenix', avatar: 'MF', compliance: 82, avgWeeklyHours: 8 },
+                        { id: 'mock-4', name: 'Lara Croft', avatar: 'LC', compliance: 98, avgWeeklyHours: 15 },
+                        { id: 'mock-5', name: 'Bruce Wayne', avatar: 'BW', compliance: 75, avgWeeklyHours: 10 }
+                    ];
+
+                    setAthletes(demoAthletes as any);
+                    setActiveAthletesCount(5);
+                    setRevenue(1250);
+                    setComplianceGlobal(88);
+                    setCancellationRate(4);
+
+                    const enriched: ComplianceStat[] = demoAthletes.map(a => ({
+                        id: a.id,
+                        name: a.name,
+                        avatar: a.avatar,
+                        compliance: a.compliance,
+                        trend: (a.compliance > 80 ? 'up' : 'down') as 'up' | 'down',
+                        lastActive: '2d ago',
+                        plan: 'pro' as const,
+                        avgWeeklyHours: a.avgWeeklyHours
+                    }));
+
+                    setHeroes(enriched.filter(a => a.compliance >= 90).slice(0, 3));
+                    setGhosts(enriched.filter(a => a.compliance < 50).slice(0, 3));
+
+                    const opps: { type: 'upsell' | 'downsell', athlete: ComplianceStat }[] = [];
+                    enriched.forEach(a => {
+                        if (a.avgWeeklyHours > 8) opps.push({ type: 'upsell', athlete: a });
+                        else if (a.compliance < 40) opps.push({ type: 'downsell', athlete: a });
+                    });
+                    setOpportunities(opps);
+                } else {
+                    setAthletes(athletesData);
+                    setActiveAthletesCount(athletesData.length);
 
                     // 1. Revenue
                     const { data: payments } = await supabase
@@ -86,11 +131,10 @@ export function CoachDashboard() {
                     const { data: sessions } = await supabase
                         .from('training_sessions')
                         .select('id, status, session_data, athlete_id, title, scheduled_date')
-                        .gte('scheduled_date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()); // Last 30 days
+                        .gte('scheduled_date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
 
-                    if (sessions && athletesData.length > 0) {
-                        const relevantSessions = sessions.filter(s => athletesData.some(a => a.id === s.athlete_id));
-
+                    if (sessions) {
+                        const relevantSessions = sessions.filter(s => athletesData.some((a: any) => a.id === s.athlete_id));
                         const completed = relevantSessions.filter(s => s.status === 'COMPLETED').length;
                         const cancelled = relevantSessions.filter(s => s.status === 'MISSED' || s.status === 'SKIPPED').length;
                         const total = relevantSessions.length || 1;
@@ -98,14 +142,11 @@ export function CoachDashboard() {
                         setComplianceGlobal(Math.round((completed / total) * 100));
                         setCancellationRate(Math.round((cancelled / total) * 100));
 
-                        // 3. Generate Derived Stats (Heroes, Ghosts, Opportunities)
-                        // In a real app, we would query per-athlete stats. Here we simulate logic based on available data + randomization for demo.
-                        const enrichedAthletes: ComplianceStat[] = athletesData.map(a => {
-                            // Simulate individual stats
+                        const enrichedAthletes: ComplianceStat[] = athletesData.map((a: any) => {
                             const personalSessions = relevantSessions.filter(s => s.athlete_id === a.id);
                             const pCompleted = personalSessions.filter(s => s.status === 'COMPLETED').length;
                             const pTotal = personalSessions.length || 1;
-                            const pCompliance = Math.round((pCompleted / pTotal) * 100) || (Math.random() > 0.5 ? 95 : 45); // Fallback for demo
+                            const pCompliance = Math.round((pCompleted / pTotal) * 100) || (Math.random() > 0.5 ? 95 : 45);
 
                             return {
                                 id: a.id,
@@ -122,7 +163,6 @@ export function CoachDashboard() {
                         setHeroes(enrichedAthletes.filter(a => a.compliance >= 90).slice(0, 3));
                         setGhosts(enrichedAthletes.filter(a => a.compliance < 50).slice(0, 3));
 
-                        // Business Logic
                         const opps: { type: 'upsell' | 'downsell', athlete: ComplianceStat }[] = [];
                         enrichedAthletes.forEach(a => {
                             if (a.avgWeeklyHours > 8) opps.push({ type: 'upsell', athlete: a });
@@ -130,45 +170,48 @@ export function CoachDashboard() {
                         });
                         setOpportunities(opps.slice(0, 4));
                     }
+                }
 
-                    // Load Meetings (Existing logic)
+                // Load Meetings
+                if (coachId) {
                     const { data: appointments } = await supabase
                         .from('appointments')
-                        .select('*')
+                        .select(`
+                            *,
+                            athlete:athlete_id (id, full_name, first_name, last_name, pseudo)
+                        `)
                         .eq('coach_id', coachId)
                         .gte('start_time', new Date().toISOString())
                         .order('start_time', { ascending: true })
                         .limit(5);
 
                     if (appointments) {
-                        setMeetings(appointments.map(a => ({
-                            id: a.id,
-                            athlete: athletesData.find(ath => ath.id === a.athlete_id)?.name || 'Athlete',
-                            time: format(new Date(a.start_time), 'HH:mm'),
-                            rawDate: new Date(a.start_time),
-                            type: a.title,
-                            duration: formatDistance(new Date(a.start_time), new Date(a.end_time), { locale: dateLocale })
-                        })));
+                        setMeetings(appointments.map(a => {
+                            let athleteName = a.client_name;
+
+                            if (!athleteName && a.athlete) {
+                                athleteName = a.athlete.first_name && a.athlete.last_name
+                                    ? `${a.athlete.first_name} ${a.athlete.last_name}`
+                                    : (a.athlete.full_name || a.athlete.pseudo);
+                            }
+
+                            if (!athleteName) {
+                                // Fallback to pre-fetched athletes list if join failed for some reason
+                                athleteName = athletesData.find((ath: any) => ath.id === a.athlete_id)?.name;
+                            }
+
+                            return {
+                                id: a.id,
+                                athlete: athleteName || t('athlete'),
+                                time: format(new Date(a.start_time), 'HH:mm'),
+                                rawDate: new Date(a.start_time),
+                                type: a.title,
+                                duration: formatDistance(new Date(a.start_time), new Date(a.end_time), { locale: dateLocale }),
+                                isExternal: !a.athlete_id,
+                                athleteId: a.athlete_id
+                            };
+                        }));
                     }
-
-                    // V4: Simulation Functions
-                    const getWeatherIcon = (date: Date) => {
-                        const day = date.getDate();
-                        if (day % 4 === 0) return <CloudRain size={10} className="text-indigo-400" />;
-                        if (day % 3 === 0) return <Cloud size={10} className="text-slate-400" />;
-                        if (day % 5 === 0) return <CloudLightning size={10} className="text-amber-400" />;
-                        return <Sun size={10} className="text-amber-400" />;
-                    };
-
-                    const getComplianceLevel = (compliance: number) => {
-                        if (compliance >= 90) return 'high';
-                        if (compliance >= 70) return 'moderate';
-                        return 'low';
-                    };
-
-                    (window as any).getCoachWeatherIcon = getWeatherIcon;
-                    (window as any).getCoachComplianceLevel = getComplianceLevel;
-
                 }
             } catch (err) {
                 logger.error('Error loading dashboard data:', err);
@@ -177,10 +220,8 @@ export function CoachDashboard() {
             }
         };
 
-        if (currentUser) {
-            loadDashboardData();
-        }
-    }, [currentUser, getAthletesForCoach]);
+        loadDashboardData();
+    }, [currentUser?.id, getAthletesForCoach]);
 
 
     const stats = [
@@ -218,16 +259,29 @@ export function CoachDashboard() {
     ];
 
     const loadChartData = [
-        { name: 'Mon', load: 45 }, { name: 'Tue', load: 52 },
-        { name: 'Wed', load: 48 }, { name: 'Thu', load: 61 },
-        { name: 'Fri', load: 55 }, { name: 'Sat', load: 72 },
-        { name: 'Sun', load: 30 },
+        { name: 'Mon', avg: 45, high: 65, low: 20 },
+        { name: 'Tue', avg: 52, high: 75, low: 25 },
+        { name: 'Wed', avg: 48, high: 68, low: 15 },
+        { name: 'Thu', avg: 61, high: 85, low: 35 },
+        { name: 'Fri', avg: 55, high: 80, low: 30 },
+        { name: 'Sat', avg: 72, high: 95, low: 40 },
+        { name: 'Sun', avg: 30, high: 45, low: 10 },
     ];
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-1000">
+        <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700 pb-20">
+            <SEO
+                titleKey="seo_coach_dashboard_title"
+                descriptionKey="seo_coach_dashboard_desc"
+                jsonLd={{
+                    "@context": "https://schema.org",
+                    "@type": "WebPage",
+                    "name": t('seo_coach_dashboard_title'),
+                    "description": t('seo_coach_dashboard_desc')
+                }}
+            />
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-800 pb-6">
                 <div>
                     <h1 className="text-4xl font-black text-white uppercase tracking-tighter">
                         Coach <span className="text-emerald-400">Control</span>
@@ -244,6 +298,17 @@ export function CoachDashboard() {
                     <div className="flex items-center gap-2 px-4 py-2 bg-slate-900 border border-slate-800 rounded-2xl shadow-xl">
                         <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
                         <span className="text-[10px] font-black text-white uppercase tracking-widest">{t('system_online')}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setShowReminderModal(true)}
+                            disabled={requestingAll || (ghosts.length > 0 && ghosts.every(g => remindedAthleteIds.has(g.id)))}
+                            className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all shadow-xl shadow-indigo-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {requestingAll ? <RefreshCw className="animate-spin" size={16} /> : <Bell size={16} />}
+                            {t('request_all_checkins')}
+                        </button>
+                        <InfoTooltip content={t('request_all_checkins_tooltip')} />
                     </div>
                 </div>
             </div>
@@ -293,29 +358,34 @@ export function CoachDashboard() {
                                     <div>
                                         <div className="flex items-center gap-2">
                                             <h4 className="text-xs font-black text-white uppercase tracking-tight">{m.athlete}</h4>
+                                            {m.isExternal && (
+                                                <span className="text-[8px] px-1.5 py-0.5 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded uppercase font-black tracking-widest">Ext</span>
+                                            )}
                                             {(window as any).getCoachWeatherIcon && (window as any).getCoachWeatherIcon(m.rawDate)}
                                         </div>
                                         <p className="text-[9px] text-slate-500 font-bold uppercase tracking-tighter">{m.type}</p>
                                     </div>
                                 </div>
-                                <button
-                                    onClick={() => setSelectedAthleteForTech(athletes.find(a => a.name === m.athlete) || null)}
-                                    className="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-emerald-500/20"
-                                >
-                                    <Target size={12} />
-                                </button>
+                                {!m.isExternal && (
+                                    <button
+                                        onClick={() => setSelectedAthleteForTech(athletes.find(a => a.name === m.athlete) || null)}
+                                        className="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-emerald-500/20"
+                                    >
+                                        <Target size={12} />
+                                    </button>
+                                )}
                             </div>
                         )) : (
                             <div className="py-12 flex flex-col items-center justify-center text-slate-600 border border-dashed border-slate-800 rounded-3xl">
                                 <CalendarIcon size={24} className="mb-2 opacity-20" />
-                                <p className="text-[10px] font-black uppercase tracking-widest">No meetings today</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest">{t('no_meetings')}</p>
                             </div>
                         )}
                         <button
                             onClick={() => navigate('/calendar')}
                             className="w-full mt-4 py-3 bg-slate-900 border border-slate-800 text-slate-500 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:text-white"
                         >
-                            {t('view_calendar')}
+                            {t('view_full_calendar')}
                         </button>
                     </div>
                 </Card>
@@ -330,7 +400,11 @@ export function CoachDashboard() {
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={loadChartData}>
                                 <defs>
-                                    <linearGradient id="colorLoad" x1="0" y1="0" x2="0" y2="1">
+                                    <linearGradient id="colorHigh" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.1} />
+                                        <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
+                                    </linearGradient>
+                                    <linearGradient id="colorAvg" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
                                         <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                                     </linearGradient>
@@ -338,8 +412,14 @@ export function CoachDashboard() {
                                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                                 <XAxis dataKey="name" stroke="#475569" fontSize={10} fontWeight="bold" axisLine={false} tickLine={false} />
                                 <YAxis stroke="#475569" fontSize={10} fontWeight="bold" axisLine={false} tickLine={false} />
-                                <Tooltip contentStyle={{ backgroundColor: '#020617', border: '1px solid #1e293b', borderRadius: '12px' }} itemStyle={{ fontSize: '10px', color: '#10b981', fontWeight: 'bold' }} />
-                                <Area type="monotone" dataKey="load" stroke="#10b981" strokeWidth={4} fillOpacity={1} fill="url(#colorLoad)" />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#020617', border: '1px solid #1e293b', borderRadius: '12px' }}
+                                    itemStyle={{ fontSize: '10px', fontWeight: 'bold' }}
+                                    labelStyle={{ color: '#94a3b8', fontSize: '10px', marginBottom: '4px' }}
+                                />
+                                <Area type="monotone" dataKey="high" stroke="#f43f5e" strokeWidth={1} strokeDasharray="4 4" fill="url(#colorHigh)" name={t('high_intensity_group') || 'Top 20% (Risque)'} />
+                                <Area type="monotone" dataKey="low" stroke="#475569" strokeWidth={1} strokeDasharray="4 4" fill="transparent" name={t('low_intensity_group') || 'Base 20% (Inactifs)'} />
+                                <Area type="monotone" dataKey="avg" stroke="#10b981" strokeWidth={4} fillOpacity={1} fill="url(#colorAvg)" name={t('average_group') || 'Moyenne Groupe'} />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
@@ -410,9 +490,25 @@ export function CoachDashboard() {
                                         </div>
                                     </div>
                                 </div>
-                                <button className="px-3 py-1 bg-rose-500 text-white rounded text-[8px] font-black uppercase hover:bg-rose-600">
-                                    {t('ping_action')}
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => {
+                                            const newReminders = new Set(remindedAthleteIds);
+                                            newReminders.add(g.id);
+                                            setRemindedAthleteIds(newReminders);
+
+                                            toast.success(t('request_sent_title'), {
+                                                description: `Rappel envoyé à ${g.name}`
+                                            });
+                                        }}
+                                        disabled={remindedAthleteIds.has(g.id)}
+                                        className="px-3 py-1 bg-rose-500 text-white rounded text-[8px] font-black uppercase hover:bg-rose-600 flex items-center gap-1 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
+                                    >
+                                        {remindedAthleteIds.has(g.id) ? <Check size={10} /> : <Bell size={10} />}
+                                        {t('request_checkin')}
+                                    </button>
+                                    <InfoTooltip content={t('request_checkin_tooltip')} />
+                                </div>
                             </div>
                         )) : (
                             <p className="text-xs text-slate-500 italic p-4 text-center">{t('everyone_active')}</p>
@@ -463,38 +559,62 @@ export function CoachDashboard() {
             </Card>
 
             {/* Technical Assessment Modal */}
-            {selectedAthleteForTech && (
-                <CoachTechnicalForm
-                    athlete={selectedAthleteForTech}
-                    onClose={() => setSelectedAthleteForTech(null)}
-                    onSave={async (data: TechnicalAssessmentData) => {
-                        try {
-                            const { error } = await supabase
-                                .from('technical_assessments')
-                                .insert([{
-                                    coach_id: currentUser?.id,
-                                    athlete_id: selectedAthleteForTech.id,
-                                    form_status: data.formStatus,
-                                    fatigue: data.fatigue,
-                                    motivation: data.motivation,
-                                    focus: data.focus
-                                }]);
+            {
+                selectedAthleteForTech && (
+                    <CoachTechnicalForm
+                        athlete={selectedAthleteForTech}
+                        onClose={() => setSelectedAthleteForTech(null)}
+                        onSave={async (data: TechnicalAssessmentData) => {
+                            try {
+                                const { error } = await supabase
+                                    .from('technical_assessments')
+                                    .insert([{
+                                        coach_id: currentUser?.id,
+                                        athlete_id: selectedAthleteForTech.id,
+                                        form_status: data.formStatus,
+                                        fatigue: data.fatigue,
+                                        motivation: data.motivation,
+                                        focus: data.focus
+                                    }]);
 
-                            if (error) {
-                                logger.error('Error saving technical assessment:', error);
-                                toast.error('Failed to save assessment');
-                            } else {
-                                toast.success('Assessment saved successfully');
-                                setSelectedAthleteForTech(null);
+                                if (error) {
+                                    logger.error('Error saving technical assessment:', error);
+                                    toast.error('Failed to save assessment');
+                                } else {
+                                    toast.success('Assessment saved successfully');
+                                    setSelectedAthleteForTech(null);
+                                }
+                            } catch (err) {
+                                logger.error('Exception saving technical assessment:', err);
+                                toast.error('An error occurred');
                             }
-                        } catch (err) {
-                            logger.error('Exception saving technical assessment:', err);
-                            toast.error('An error occurred');
-                        }
-                    }}
-                />
-            )}
-        </div>
+                        }}
+                    />
+                )
+            }
+
+            <CheckinReminderModal
+                isOpen={showReminderModal}
+                onClose={() => setShowReminderModal(false)}
+                athletes={ghosts}
+                remindedIds={remindedAthleteIds}
+                onSendReminders={(selectedIds) => {
+                    setRequestingAll(true);
+                    const newReminders = new Set(remindedAthleteIds);
+                    selectedIds.forEach(id => newReminders.add(id));
+                    setRemindedAthleteIds(newReminders);
+
+                    setTimeout(() => {
+                        setRequestingAll(false);
+                        toast.success(t('request_sent_title'), {
+                            description: selectedIds.length > 1
+                                ? t('request_all_checkins_sent_desc')
+                                : `${t('request_sent_title')} - ${athletes.find(a => a.id === selectedIds[0])?.name}`
+                        });
+                    }, 1000);
+                }}
+            />
+
+        </div >
     );
 }
-

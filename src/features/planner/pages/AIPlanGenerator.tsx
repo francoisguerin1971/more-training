@@ -207,7 +207,13 @@ export function AIPlanGenerator() {
         const EXERCISE_LIBRARY = getExerciseLibrary(); // Use localized library with t()
 
         setTimeout(() => {
-            // Generate Synthesis
+            // Generate Rationale FIRST (must be declared before use in synthesisData)
+            const rationaleText = `Ce plan est construit sur une approche de périodisation ${periodization.intensity === 'intensive' ? 'bloc par bloc' : 'linéaire progressive'}. 
+                L'objectif est d'optimiser le volume en ${sportObjectives.primarySport} tout en intégrant du renforcement spécifique pour prévenir les blessures liées à l'augmentation de la charge. 
+                Nous favorisons ${periodization.loadPreference === 'aggressive' ? 'une montée rapide en charge' : 'une adaptation physiologique durable'} avec des fenêtres de récupération toutes les 4 semaines (cycles de Deload).`;
+            setRationale(rationaleText);
+
+            // Generate Synthesis (now rationaleText is available)
             const synthesisData = {
                 athlete: athleteData ?
                     `${athleteData.athlete.name}, ${biometrics.age} ${t('years_suffix') || 'ans'}, ${biometrics.gender === 'male' ? t('gender_male') : t('gender_female')}, ${biometrics.weight}kg, ${biometrics.height}cm` :
@@ -217,16 +223,6 @@ export function AIPlanGenerator() {
                 constraints: healthRecovery.injuries || t('no_injuries_reported'),
                 rationale: rationaleText
             };
-            setSynthesis(synthesisData);
-
-            // Generate Rationale
-            const rationaleText = `Ce plan est construit sur une approche de périodisation ${periodization.intensity === 'intensive' ? 'bloc par bloc' : 'linéaire progressive'}. 
-                L'objectif est d'optimiser le volume en ${sportObjectives.primarySport} tout en intégrant du renforcement spécifique pour prévenir les blessures liées à l'augmentation de la charge. 
-                Nous favorisons ${periodization.loadPreference === 'aggressive' ? 'une montée rapide en charge' : 'une adaptation physiologique durable'} avec des fenêtres de récupération toutes les 4 semaines (cycles de Deload).`;
-            setRationale(rationaleText);
-
-            // Re-update synthesis with rationale if needed (already updated above, but let's be safe if state hasn't flushed)
-            synthesisData.rationale = rationaleText;
             setSynthesis(synthesisData);
 
             // Generate Recommendations

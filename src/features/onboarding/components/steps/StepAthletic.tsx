@@ -98,6 +98,34 @@ export function StepAthletic({ formData, setFormData, errors }: StepAthleticProp
                     />
                 </div>
             </div>
+
+            <div className="pt-6 border-t border-slate-800 space-y-8">
+                <div className="space-y-4">
+                    <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-2 flex items-center justify-between">
+                        <span>{t('historical_volume_label') || "Volume hebdomadaire moyen (Dernières 4 semaines)"}</span>
+                        <span className="text-white bg-indigo-500/20 px-2 py-1 rounded-lg">{formData.historicalVolume} h/semaine</span>
+                    </label>
+                    <input
+                        type="range" min="0" max="25" step="0.5"
+                        value={formData.historicalVolume}
+                        onChange={(e) => setFormData((prev: any) => ({ ...prev, historicalVolume: parseFloat(e.target.value) }))}
+                        className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                    />
+                </div>
+
+                <div className="space-y-4">
+                    <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-2 flex items-center justify-between">
+                        <span>{t('historical_intensity_label') || "Intensité moyenne ressentie (RPE 1-10)"}</span>
+                        <span className="text-white bg-indigo-500/20 px-2 py-1 rounded-lg">{formData.historicalRpe} / 10</span>
+                    </label>
+                    <input
+                        type="range" min="1" max="10" step="1"
+                        value={formData.historicalRpe}
+                        onChange={(e) => setFormData((prev: any) => ({ ...prev, historicalRpe: parseInt(e.target.value) }))}
+                        className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                    />
+                </div>
+            </div>
         </div>
     );
 }

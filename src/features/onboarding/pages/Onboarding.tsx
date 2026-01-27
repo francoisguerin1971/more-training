@@ -86,6 +86,8 @@ export function Onboarding() {
             restingHR: 60,
             maxHR: 190,
             medicalConstraints: '',
+            historicalVolume: 3, // Hours per week avg last 4 weeks
+            historicalRpe: 5,    // Avg RPE last 4 weeks
         };
         return savedData ? JSON.parse(savedData) : defaultData;
     });
@@ -298,7 +300,16 @@ export function Onboarding() {
                 first_name: formData.pseudo || '',
                 pseudo: formData.pseudo,
                 full_name: formData.pseudo || currentUser?.full_name || '',
-                profile_data: profileData,
+                profile_data: {
+                    ...profileData,
+                    baselines: {
+                        historicalVolume: formData.historicalVolume,
+                        chronicalLoadBaseline: formData.historicalVolume * 60 * formData.historicalRpe,
+                        hrv: 65, // Default baseline to be refined by wearables
+                        maxHR: formData.maxHR,
+                        restingHR: formData.restingHR
+                    }
+                },
                 onboarded: true,
                 role: formData.role
             });

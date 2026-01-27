@@ -1,9 +1,10 @@
-import React from 'react';
 import { AlertCircle } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/stores/authStore';
+import { useLanguage } from '@/shared/context/LanguageContext';
 
 export function SandboxBanner({ status }) {
     const { currentUser } = useAuthStore();
+    const { t } = useLanguage();
 
     // Hide for athletes or if status is ACTIVE
     if (status === 'ACTIVE' || currentUser?.role === 'athlete') return null;
@@ -17,15 +18,15 @@ export function SandboxBanner({ status }) {
                     </div>
                     <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-white">
-                            Compte en mode Bac à sable (Sandbox)
+                            {t('sandbox_title')}
                         </p>
                         <p className="text-[9px] font-bold text-amber-500/80 uppercase tracking-tighter">
-                            Veuillez soumettre vos documents KYB pour publier vos offres en direct.
+                            {t('sandbox_subtitle')}
                         </p>
                     </div>
                 </div>
                 <button className="bg-amber-500 text-slate-950 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-amber-400 transition-colors">
-                    Vérifier mon compte
+                    {t('verify_account_btn')}
                 </button>
             </div>
         </div>

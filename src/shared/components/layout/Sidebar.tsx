@@ -26,15 +26,19 @@ export function Sidebar({ onLogout }: SidebarProps) {
     const proLinks = [
         { path: '/dashboard', label: t('dashboard'), icon: LayoutDashboard },
         { path: '/athletes', label: t('athletes'), icon: Users },
-        { path: '/calendar', label: t('planner'), icon: LayoutGrid },
-        { path: '/ai-planner', label: t('ai_planner_title'), icon: BrainCircuit },
-        { path: '/manual-builder', label: t('manual_studio'), icon: List },
+        // Planning Suite
+        // Planning Suite
+        { path: '/calendar', label: t('planner'), icon: LayoutGrid }, // Global Calendar
+        { path: '/planner', label: t('planificateur'), icon: BrainCircuit, group: 'MasterPlan' },
+        // { path: '/ai-planner', label: t('ai_planner_title'), icon: BrainCircuit, group: 'MasterPlan' },
+        // { path: '/manual-builder', label: t('manual_studio'), icon: List, group: 'MasterPlan' },
+
         { path: '/integrations', label: t('integrations'), icon: Watch },
         { path: '/appointments', label: t('weekly_meetings'), icon: Calendar },
         { path: '/messages', label: t('messages'), icon: MessageSquare, badge: unreadCount },
-        { path: '/invoices', label: 'Facturation', icon: CreditCard },
+        { path: '/invoices', label: t('billing'), icon: CreditCard },
         { path: '/resources', label: t('library'), icon: BookOpen },
-        { path: '/my-profile', label: t('my_public_profile', 'Mon Profil Public'), icon: Globe },
+        { path: '/my-profile', label: t('my_public_profile'), icon: Globe },
     ];
 
     const athleteLinks = [
@@ -79,32 +83,43 @@ export function Sidebar({ onLogout }: SidebarProps) {
             </div>
 
             <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto">
-                {links.map((link) => {
+                {links.map((link, index) => {
                     const Icon = link.icon;
+                    // Add separator before specialized groups if needed
+                    const isGroupStart = (link as any).group && (index === 0 || (links[index - 1] as any).group !== (link as any).group);
+
                     return (
-                        <NavLink
-                            key={link.path}
-                            to={link.path}
-                            className={({ isActive }) => cn(
-                                "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
-                                isActive
-                                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-sm"
-                                    : "text-slate-400 hover:text-slate-100 hover:bg-slate-800/50 border border-transparent"
+                        <div key={link.path}>
+                            {isGroupStart && (link as any).group !== 'MasterPlan' && (
+                                <div className="px-3 mt-4 mb-2">
+                                    <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
+                                        {(link as any).group}
+                                    </p>
+                                </div>
                             )}
-                        >
-                            <div className="flex items-center gap-3">
-                                <Icon size={18} />
-                                {link.label}
-                            </div>
-                            {link.badge !== undefined && (link.badge > 0 || typeof link.badge === 'string') && (
-                                <span className={cn(
-                                    "text-[10px] font-bold px-2 py-0.5 rounded-full",
-                                    typeof link.badge === 'string' ? "bg-emerald-500 text-slate-950" : "bg-rose-500 text-white"
-                                )}>
-                                    {link.badge}
-                                </span>
-                            )}
-                        </NavLink>
+                            <NavLink
+                                to={link.path}
+                                className={({ isActive }) => cn(
+                                    "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
+                                    isActive
+                                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-sm"
+                                        : "text-slate-400 hover:text-slate-100 hover:bg-slate-800/50 border border-transparent"
+                                )}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <Icon size={18} />
+                                    {link.label}
+                                </div>
+                                {(link as any).badge !== undefined && ((link as any).badge > 0 || typeof (link as any).badge === 'string') && (
+                                    <span className={cn(
+                                        "text-[10px] font-bold px-2 py-0.5 rounded-full",
+                                        typeof (link as any).badge === 'string' ? "bg-emerald-500 text-slate-950" : "bg-rose-500 text-white"
+                                    )}>
+                                        {(link as any).badge}
+                                    </span>
+                                )}
+                            </NavLink>
+                        </div>
                     );
                 })}
             </nav>

@@ -207,7 +207,7 @@ export function ResourcesLibrary() {
             {loading ? (
                 <div className="py-20 flex flex-col items-center justify-center space-y-4">
                     <Loader2 size={40} className="text-emerald-500 animate-spin" />
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest animate-pulse">Synchronisation de la bibliothèque...</p>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest animate-pulse">{t('syncing_library')}</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -241,7 +241,7 @@ export function ResourcesLibrary() {
 
                                 <div className="px-8 py-5 border-t border-slate-900 bg-slate-900/20 flex items-center justify-between">
                                     <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
-                                        {resource.created_at ? format(new Date(resource.created_at), 'dd MMM yyyy', { locale: locales[language] }) : 'N/A'}
+                                        {resource.created_at ? format(new Date(resource.created_at), 'dd MMM yyyy', { locale: locales[language] }) : t('not_available') || 'N/A'}
                                     </span>
 
                                     <div className="flex items-center gap-4">
@@ -285,7 +285,7 @@ export function ResourcesLibrary() {
                             </div>
                             <h3 className="text-white font-black text-xl uppercase tracking-tighter">{t('no_resources_found')}</h3>
                             <p className="text-slate-600 text-[10px] font-bold uppercase tracking-widest mt-3 max-w-sm">
-                                {isCoach ? "Commencez à bâtir votre bibliothèque pour vos athlètes." : "Votre coach n'a pas encore partagé de ressources."}
+                                {isCoach ? t('build_library_coach_hint') : t('no_resources_shared_hint')}
                             </p>
                         </div>
                     )}
@@ -301,7 +301,7 @@ export function ResourcesLibrary() {
                                 <h2 className="text-3xl font-black text-white uppercase tracking-tighter">
                                     {editingResource ? t('edit_resource') : t('add_resource')}
                                 </h2>
-                                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-1">Partagez votre expertise</p>
+                                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-1">{t('share_expertise_subtitle')}</p>
                             </div>
                             <button onClick={() => setShowModal(false)} className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-500 hover:text-white transition-all hover:border-slate-700">
                                 <X size={24} />
@@ -315,7 +315,7 @@ export function ResourcesLibrary() {
                                     <input
                                         type="text"
                                         required
-                                        placeholder="Titre de la ressource..."
+                                        placeholder={t('resource_title_placeholder')}
                                         value={formData.title}
                                         onChange={e => setFormData(p => ({ ...p, title: e.target.value }))}
                                         className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-6 py-4 text-white text-sm font-bold focus:outline-none focus:border-emerald-500 transition-all transition-all placeholder:text-slate-700"
@@ -351,7 +351,7 @@ export function ResourcesLibrary() {
                                 <input
                                     type="url"
                                     required
-                                    placeholder="https://"
+                                    placeholder={t('resource_url_placeholder')}
                                     value={formData.content_url}
                                     onChange={e => setFormData(p => ({ ...p, content_url: e.target.value }))}
                                     className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-6 py-4 text-white text-sm font-bold focus:outline-none focus:border-emerald-500 transition-all placeholder:text-slate-700"
@@ -361,7 +361,7 @@ export function ResourcesLibrary() {
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{t('resource_description')}</label>
                                 <textarea
-                                    placeholder="Décrivez brièvement le contenu..."
+                                    placeholder={t('resource_desc_placeholder')}
                                     value={formData.description}
                                     onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
                                     className="w-full bg-slate-900 border border-slate-800 rounded-2xl px-6 py-4 text-white text-sm font-medium h-32 resize-none focus:outline-none focus:border-emerald-500 transition-all placeholder:text-slate-700"
@@ -377,7 +377,7 @@ export function ResourcesLibrary() {
                                     <div>
                                         <h4 className="text-xs font-black text-white uppercase tracking-widest">{t('resource_public')}</h4>
                                         <p className="text-[9px] text-slate-600 font-bold uppercase tracking-widest mt-1">
-                                            {formData.is_public ? "Visible par tous vos athlètes" : "Confidentialité restreinte"}
+                                            {formData.is_public ? t('visible_by_all_hint') : t('restricted_privacy_hint')}
                                         </p>
                                     </div>
                                 </div>

@@ -79,11 +79,11 @@ export function Integrations() {
         <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-700 pb-20">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-4xl font-black text-white uppercase tracking-tighter">Ecosystem <span className="text-emerald-400">Sync</span></h1>
-                    <p className="text-slate-500 mt-1 font-bold uppercase tracking-widest text-[10px]">Cloud Infrastructure Integration</p>
+                    <h1 className="text-4xl font-black text-white uppercase tracking-tighter">{t('ecosystem_sync_title')}</h1>
+                    <p className="text-slate-500 mt-1 font-bold uppercase tracking-widest text-[10px]">{t('cloud_infra_integration')}</p>
                 </div>
                 <div className="flex items-center gap-3 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-emerald-400 text-[10px] font-black uppercase tracking-widest">
-                    <Cloud size={14} /> Global Sync Online
+                    <Cloud size={14} /> {t('global_sync_online')}
                 </div>
             </div>
 
@@ -111,9 +111,9 @@ export function Integrations() {
                             {connections[p.id].status === 'connected' ? (
                                 <div className="flex flex-col">
                                     <span className="flex items-center gap-1.5 text-emerald-400 text-[9px] font-black uppercase bg-emerald-500/10 px-2 py-1 rounded-lg border border-emerald-500/20 w-fit">
-                                        <CheckCircle2 size={10} /> Active
+                                        <CheckCircle2 size={10} /> {t('active')}
                                     </span>
-                                    <span className="text-[8px] text-slate-600 mt-2 uppercase font-black tracking-widest">Latency: 24ms</span>
+                                    <span className="text-[8px] text-slate-600 mt-2 uppercase font-black tracking-widest">{t('latency_label') || 'Latency'}: 24ms</span>
                                 </div>
                             ) : (
                                 <button
@@ -121,12 +121,12 @@ export function Integrations() {
                                     disabled={isSyncing}
                                     className="text-[9px] font-black text-white bg-slate-800 hover:bg-slate-700 px-6 py-2.5 rounded-xl border border-slate-700 transition-all uppercase tracking-widest"
                                 >
-                                    {isSyncing ? "Connecting..." : "Connect"}
+                                    {isSyncing ? t('connecting_label') : t('connect_label')}
                                 </button>
                             )}
                             <div className="text-right">
-                                <p className="text-[8px] text-slate-600 font-bold uppercase">Sync Data</p>
-                                <p className="text-[10px] text-white font-black">{connections[p.id].lastSync || "None"}</p>
+                                <p className="text-[8px] text-slate-600 font-bold uppercase">{t('sync_data_label')}</p>
+                                <p className="text-[10px] text-white font-black">{connections[p.id].lastSync || t('none')}</p>
                             </div>
                         </div>
 
@@ -136,7 +136,7 @@ export function Integrations() {
                                 onClick={handlePushToWatch}
                                 className="flex-1 flex items-center justify-center gap-2 bg-slate-950 border border-slate-800 hover:border-emerald-500/50 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-300 transition-all disabled:opacity-10 active:scale-95 shadow-inner"
                             >
-                                <Send size={14} className="text-emerald-400" /> Push Meta
+                                <Send size={14} className="text-emerald-400" /> {t('push_meta_label')}
                             </button>
                             <button
                                 className="p-3 bg-slate-950 border border-slate-800 hover:bg-slate-800 rounded-xl text-slate-600 hover:text-white transition-all shadow-inner"
@@ -151,7 +151,7 @@ export function Integrations() {
                     <div className="w-14 h-14 rounded-2xl bg-slate-950 flex items-center justify-center mb-4 border border-slate-800 text-slate-700 group-hover:text-emerald-400 transition-colors shadow-inner">
                         <Share2 size={24} />
                     </div>
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest group-hover:text-white">External API</p>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest group-hover:text-white">{t('external_api_label')}</p>
                     <p className="text-[8px] text-slate-700 uppercase font-black mt-1">V2.0 Core Endpoint</p>
                 </Card>
             </div>
@@ -163,18 +163,18 @@ export function Integrations() {
                         <RefreshCw size={28} className={isSyncing ? "animate-spin" : ""} />
                     </div>
                     <div className="flex-1">
-                        <h3 className="font-black text-white text-xl uppercase tracking-tighter">Comment ça marche ?</h3>
+                        <h3 className="font-black text-white text-xl uppercase tracking-tighter">{t('how_it_works_title')}</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
                             <div>
-                                <h4 className="text-emerald-400 font-black uppercase text-[10px] tracking-widest mb-2">1. Recevoir les entraînements</h4>
+                                <h4 className="text-emerald-400 font-black uppercase text-[10px] tracking-widest mb-2">{t('receive_workouts_step')}</h4>
                                 <p className="text-xs text-slate-400 leading-relaxed font-medium">
-                                    Une fois connecté, cliquez sur "Push Meta" pour envoyer votre séance planifiée directement vers le calendrier de votre montre (Garmin, Coros, etc.). Elle apparaîtra lors de votre prochain entraînement.
+                                    {t('receive_workouts_desc')}
                                 </p>
                             </div>
                             <div>
-                                <h4 className="text-indigo-400 font-black uppercase text-[10px] tracking-widest mb-2">2. Synchroniser les résultats</h4>
+                                <h4 className="text-indigo-400 font-black uppercase text-[10px] tracking-widest mb-2">{t('sync_results_step')}</h4>
                                 <p className="text-xs text-slate-400 leading-relaxed font-medium">
-                                    Dès que vous terminez une activité sur votre montre, elle est automatiquement rapatriée ici. Notre moteur compare alors les données réelles (allure, FC, puissance) avec le plan initial.
+                                    {t('sync_results_desc')}
                                 </p>
                             </div>
                         </div>
@@ -187,8 +187,8 @@ export function Integrations() {
                     <div className="bg-emerald-600 text-slate-950 px-8 py-5 rounded-3xl shadow-2xl flex items-center gap-4 border-t-4 border-emerald-400">
                         <Watch className="animate-bounce" size={24} />
                         <div>
-                            <p className="font-black uppercase tracking-tighter text-lg">Broadcasted!</p>
-                            <p className="text-[10px] uppercase font-bold text-slate-900 tracking-widest">Target device received session data</p>
+                            <p className="font-black uppercase tracking-tighter text-lg">{t('broadcasted_label')}</p>
+                            <p className="text-[10px] uppercase font-bold text-slate-900 tracking-widest">{t('target_device_received')}</p>
                         </div>
                     </div>
                 </div>

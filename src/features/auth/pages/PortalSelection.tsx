@@ -5,11 +5,14 @@ import { useLanguage } from '@/shared/context/LanguageContext';
 import { Activity, Award, ChevronRight, LogOut, Shield } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { LanguageDropdown } from '@/shared/components/common/LanguageDropdown';
+import { usePerformanceData } from '../../dashboard/hooks/usePerformanceData';
+import { cn } from '@/core/utils/cn';
 
 export function PortalSelection() {
     const navigate = useNavigate();
     const { t } = useLanguage();
     const { currentUser, updateProfile, logout } = useAuthStore();
+    const { readiness, loading: perfLoading } = usePerformanceData();
 
     const handleSelectRole = async (role: 'pro' | 'athlete') => {
         // In a real app, this might fetch the specific profile for that role
@@ -38,17 +41,17 @@ export function PortalSelection() {
                     onClick={() => logout()}
                     className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-white transition-all bg-white/5 hover:bg-white/10 px-4 py-2 rounded-lg"
                 >
-                    <LogOut size={14} /> {t('logout', 'Déconnexion')}
+                    <LogOut size={14} /> {t('logout')}
                 </button>
             </div>
 
             <div className="relative z-10 w-full max-w-4xl">
                 <div className="text-center mb-16 space-y-4">
                     <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter uppercase leading-none">
-                        Qui êtes-vous <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-indigo-500">aujourd'hui ?</span>
+                        {t('who_are_you_today').split('?')[0]} <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-indigo-500">{t('who_are_you_today').includes('?') ? '?' : ''}</span>
                     </h1>
                     <p className="text-slate-400 text-sm md:text-base font-medium max-w-xl mx-auto">
-                        Votre compte vous donne accès à deux univers. Sélectionnez l'espace auquel vous souhaitez accéder pour cette session.
+                        {t('portal_selection_subtitle')}
                     </p>
                 </div>
 
@@ -64,17 +67,26 @@ export function PortalSelection() {
                         <div className="relative h-full bg-[#0A0D14] border border-white/5 hover:border-emerald-500/30 rounded-3xl p-8 flex flex-col items-center text-center transition-all duration-300 overflow-hidden">
                             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
-                            <div className="w-20 h-20 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 mb-8 group-hover:scale-110 group-hover:bg-emerald-500 group-hover:text-black transition-all duration-300 shadow-2xl shadow-emerald-900/20">
+                            <div className="w-20 h-20 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 mb-8 group-hover:scale-110 group-hover:bg-emerald-500 group-hover:text-black transition-all duration-300 shadow-2xl shadow-emerald-900/20 relative">
                                 <Activity size={32} strokeWidth={2.5} />
+                                {!perfLoading && readiness && (
+                                    <div className={cn(
+                                        "absolute -top-2 -right-2 w-8 h-8 rounded-full border-2 border-[#0A0D14] flex items-center justify-center text-[10px] font-black shadow-lg",
+                                        readiness.zone === 'green' ? "bg-emerald-500 text-slate-950" :
+                                            readiness.zone === 'amber' ? "bg-amber-500 text-slate-950" : "bg-rose-500 text-white"
+                                    )}>
+                                        {readiness.score}
+                                    </div>
+                                )}
                             </div>
 
-                            <h3 className="text-2xl font-black text-white uppercase tracking-tight mb-2">Espace Athlète</h3>
+                            <h3 className="text-2xl font-black text-white uppercase tracking-tight mb-2">{t('athlete_space_title')}</h3>
                             <p className="text-slate-500 text-sm leading-relaxed mb-8 px-4">
-                                Accédez à votre planification, suivez vos progrès et communiquez avec votre coach.
+                                {t('athlete_space_desc')}
                             </p>
 
                             <div className="mt-auto flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-500 group-hover:text-emerald-400">
-                                Accéder au Dashboard <ChevronRight size={14} />
+                                {t('access_dashboard_btn')} <ChevronRight size={14} />
                             </div>
                         </div>
                     </motion.div>
@@ -94,13 +106,13 @@ export function PortalSelection() {
                                 <Award size={32} strokeWidth={2.5} />
                             </div>
 
-                            <h3 className="text-2xl font-black text-white uppercase tracking-tight mb-2">Portail Coach</h3>
+                            <h3 className="text-2xl font-black text-white uppercase tracking-tight mb-2">{t('coach_portal_title')}</h3>
                             <p className="text-slate-500 text-sm leading-relaxed mb-8 px-4">
-                                Gérez vos athlètes, créez des programmes d'entraînement et analysez les performances.
+                                {t('coach_portal_desc')}
                             </p>
 
                             <div className="mt-auto flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-indigo-500 group-hover:text-indigo-400">
-                                Entrer dans le Portail <ChevronRight size={14} />
+                                {t('enter_portal_btn')} <ChevronRight size={14} />
                             </div>
                         </div>
                     </motion.div>
@@ -108,7 +120,7 @@ export function PortalSelection() {
 
                 <div className="mt-12 text-center">
                     <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900/50 border border-slate-800 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                        <Shield size={12} /> Compte Unifié Sécurisé
+                        <Shield size={12} /> {t('unified_account_note')}
                     </div>
                 </div>
             </div>

@@ -17,7 +17,7 @@ import {
     X, Video, MapPin, Calendar as CalendarIcon, User,
     Plus, Check, CheckCircle2, MessageSquare, Brain, FileEdit, CreditCard,
     Search, Filter, ChevronDown, Shield, ShieldAlert, Eye, EyeOff,
-    Sun, Cloud, CloudRain, CloudLightning
+    Sun, Cloud, CloudRain, CloudLightning, Trophy, Dumbbell, BrainCircuit
 } from 'lucide-react';
 import { isWithinInterval } from 'date-fns';
 import { cn } from '@/shared/lib/utils';
@@ -70,25 +70,28 @@ export function CoachCalendar() {
 
     React.useEffect(() => {
         const loadCoachData = async () => {
-            if (!currentUser) return;
+            const coachId = currentUser?.id;
+            let fetchedAthletes = [];
 
-            const fetchedAthletes = await getAthletesForCoach(currentUser.id);
+            if (coachId) {
+                fetchedAthletes = await getAthletesForCoach(coachId);
+            }
 
-            // DEMO MODE: If no data or demo user, inject examples
-            if (fetchedAthletes.length === 0 || currentUser.id === 'demo-pro-id') {
+            // DEMO MODE: If no data, inject examples
+            if (fetchedAthletes.length === 0) {
                 const demoAthletes = [
                     {
-                        id: 'demo-ath-1',
-                        name: 'Thomas Durand',
-                        avatar: 'TD',
+                        id: 'mock-1',
+                        name: 'Alex Mercer',
+                        avatar: 'AM',
                         avatar_url: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&h=100&fit=crop',
                         clubId: 'tri_paris',
                         profile: { goal: 'Marathon de Paris' }
                     },
                     {
-                        id: 'demo-ath-2',
-                        name: 'Sarah Lefebvre',
-                        avatar: 'SL',
+                        id: 'mock-2',
+                        name: 'Sarah Connor',
+                        avatar: 'SC',
                         avatar_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop',
                         clubId: 'trail_ventoux',
                         profile: {
@@ -104,9 +107,9 @@ export function CoachCalendar() {
                         }
                     },
                     {
-                        id: 'demo-ath-3',
-                        name: 'Marc Simon',
-                        avatar: 'MS',
+                        id: 'mock-3',
+                        name: 'Marcus Fenix',
+                        avatar: 'MF',
                         avatar_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop',
                         clubId: 'lyon_run',
                         profile: {
@@ -116,53 +119,193 @@ export function CoachCalendar() {
                             ]
                         }
                     },
+                    {
+                        id: 'mock-4',
+                        name: 'Lara Croft',
+                        avatar: 'LC',
+                        avatar_url: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop',
+                        clubId: 'nice_tri',
+                        profile: {
+                            goal: 'Ultra Trail du Mont Blanc',
+                            vacations: [{
+                                id: 'vac-2',
+                                start: addDays(startOfWeek(new Date(), { weekStartsOn: 1 }), 6).toISOString(),
+                                end: addDays(startOfWeek(new Date(), { weekStartsOn: 1 }), 14).toISOString()
+                            }]
+                        }
+                    },
+                    {
+                        id: 'mock-5',
+                        name: 'Bruce Wayne',
+                        avatar: 'BW',
+                        avatar_url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop',
+                        clubId: 'all',
+                        profile: {
+                            goal: 'Hyrox London',
+                            vacations: [{
+                                id: 'vac-3',
+                                start: addDays(startOfWeek(new Date(), { weekStartsOn: 1 }), 0).toISOString(),
+                                end: addDays(startOfWeek(new Date(), { weekStartsOn: 1 }), 1).toISOString()
+                            }]
+                        }
+                    }
                 ];
                 setAthletes(demoAthletes);
 
                 // Inject Mock Workouts for the week
                 const baseDay = startOfWeek(new Date(), { weekStartsOn: 1 });
                 const demoWorkouts = [
+                    // ALEX MERCER (Runner)
                     {
-                        id: 'w1',
-                        athleteId: 'demo-ath-1',
-                        coachId: currentUser.id,
-                        date: addDays(baseDay, 0).toISOString(),
-                        title: 'Endurance Fondamentale',
-                        description: '45min à 70% FCM',
-                        status: 'completed',
-                        plannedLoad: 250
+                        id: 'w1', athleteId: 'mock-1', coachId: coachId || 'demo',
+                        date: addDays(baseDay, 0).toISOString(), title: 'Endurance Fondamentale',
+                        description: '45min à 70% FCM', status: 'completed', plannedLoad: 250, type: 'workout'
                     },
                     {
-                        id: 'w2',
-                        athleteId: 'demo-ath-1',
-                        coachId: currentUser.id,
-                        date: addDays(baseDay, 2).toISOString(),
-                        title: 'Fractionné Court',
-                        description: '10x 30/30 en côte',
-                        status: 'planned',
-                        plannedLoad: 450
+                        id: 'w2', athleteId: 'mock-1', coachId: coachId || 'demo',
+                        date: addDays(baseDay, 2).toISOString(), title: 'Fractionné Court',
+                        description: '10x 30/30 en côte', status: 'planned', plannedLoad: 450, type: 'workout'
                     },
                     {
-                        id: 'w3',
-                        athleteId: 'demo-ath-3',
-                        coachId: currentUser.id,
-                        date: addDays(baseDay, 1).toISOString(),
-                        title: 'Renforcement Musculaire',
-                        description: 'Circuit training corps complet',
-                        status: 'PENDING_ACCEPTANCE',
-                        plannedLoad: 180
+                        id: 'w4', athleteId: 'mock-1', coachId: coachId || 'demo',
+                        date: addDays(baseDay, 4).toISOString(), title: 'Seuil Lactique',
+                        description: '3x 8min au seuil', status: 'planned', plannedLoad: 500, type: 'workout'
+                    },
+                    {
+                        id: 'c1', athleteId: 'mock-1', coachId: coachId || 'demo',
+                        date: addDays(baseDay, 6).toISOString(), title: 'Semi-Marathon Paris',
+                        description: 'Objectif: Sub 1h30', status: 'planned', plannedLoad: 900, type: 'competition'
+                    },
+
+                    // SARAH CONNOR (Trail - Vacation Thu-Sat)
+                    {
+                        id: 'a1', athleteId: 'mock-2', coachId: coachId || 'demo',
+                        date: addDays(baseDay, 1).toISOString(), title: 'Bilan Visio Mensuel',
+                        description: 'Point étape avant vacances', status: 'planned', plannedLoad: 0, type: 'appointment'
+                    },
+
+                    // MARCUS FENIX (Triathlon)
+                    {
+                        id: 'w3', athleteId: 'mock-3', coachId: coachId || 'demo',
+                        date: addDays(baseDay, 1).toISOString(), title: 'Renforcement Musculaire',
+                        description: 'Circuit training corps complet', status: 'completed', plannedLoad: 180, type: 'workout'
+                    },
+                    {
+                        id: 'w5', athleteId: 'mock-3', coachId: coachId || 'demo',
+                        date: addDays(baseDay, 3).toISOString(), title: 'Sortie Vélo Z2',
+                        description: '2h en endurance de base', status: 'planned', plannedLoad: 400, type: 'workout'
+                    },
+                    {
+                        id: 'w9', athleteId: 'mock-3', coachId: coachId || 'demo',
+                        date: addDays(baseDay, 5).toISOString(), title: 'Transition Brick',
+                        description: '1h Vélo + 20min CAP', status: 'planned', plannedLoad: 600, type: 'workout'
+                    },
+
+                    // LARA CROFT (Ultra)
+                    {
+                        id: 'w6', athleteId: 'mock-4', coachId: coachId || 'demo',
+                        date: addDays(baseDay, 0).toISOString(), title: 'Natation Technique',
+                        description: 'Focus sur le roulis', status: 'completed', plannedLoad: 200, type: 'workout'
+                    },
+                    {
+                        id: 'w10', athleteId: 'mock-4', coachId: coachId || 'demo',
+                        date: addDays(baseDay, 2).toISOString(), title: 'Yoga & Mobilité',
+                        description: 'Récupération active', status: 'completed', plannedLoad: 50, type: 'workout'
+                    },
+                    {
+                        id: 'w7', athleteId: 'mock-4', coachId: coachId || 'demo',
+                        date: addDays(baseDay, 5).toISOString(), title: 'Sortie Longue Trail',
+                        description: '3h en montagne avec D+', status: 'planned', plannedLoad: 800, type: 'workout'
+                    },
+
+                    // BRUCE WAYNE (Hyrox)
+                    {
+                        id: 'w8', athleteId: 'mock-5', coachId: coachId || 'demo',
+                        date: addDays(baseDay, 2).toISOString(), title: 'Intervals HR Max',
+                        description: 'Burpees & Sprints', status: 'PENDING_ACCEPTANCE', plannedLoad: 600, type: 'workout'
+                    },
+                    {
+                        id: 't1', athleteId: 'mock-5', coachId: coachId || 'demo',
+                        date: addDays(baseDay, 4).toISOString(), title: 'Test VMA 6min',
+                        description: 'Test maximal sur piste', status: 'planned', plannedLoad: 700, type: 'workout'
                     }
                 ];
                 setWorkouts(demoWorkouts);
             } else {
-                setAthletes(fetchedAthletes);
-                // In real mode, we use the workouts from context
-                setWorkouts(contextWorkouts);
+                // ENRICH EXISTING ATHLETES FOR DEMO
+                const baseDay = startOfWeek(new Date(), { weekStartsOn: 1 });
+
+                const enrichedAthletes = fetchedAthletes.map((athlete: any, index: number) => {
+                    const profile = athlete.profile || {};
+                    let vacations = profile.vacations || [];
+                    let avatar_url = athlete.avatar_url;
+
+                    // Force Inject Data for Demo based on Name/Index
+                    if (athlete.name.includes('Sarah') || index === 1) {
+                        vacations = [{
+                            start: addDays(baseDay, 3).toISOString(),
+                            end: addDays(baseDay, 5).toISOString()
+                        }];
+                        avatar_url = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop';
+                    }
+                    if (athlete.name.includes('Bruce') || index === 2) {
+                        vacations = [{
+                            start: addDays(baseDay, 0).toISOString(),
+                            end: addDays(baseDay, 1).toISOString()
+                        }];
+                        avatar_url = 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop';
+                    }
+                    if (athlete.name.includes('Lara')) {
+                        vacations = [{
+                            start: addDays(baseDay, 6).toISOString(),
+                            end: addDays(baseDay, 14).toISOString()
+                        }];
+                        avatar_url = 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop';
+                    }
+                    if (athlete.name.includes('Thomas') || index === 0) {
+                        avatar_url = 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&h=100&fit=crop';
+                    }
+
+                    return { ...athlete, avatar_url, profile: { ...profile, vacations } };
+                });
+
+                setAthletes(enrichedAthletes);
+
+                // INJECT DEMO WORKOUTS LINKED TO THESE ATHLETES
+                const demoExtraWorkouts: any[] = [];
+
+                enrichedAthletes.forEach((athlete: any, index: number) => {
+                    // 1. Thomas / Alex (Runner) -> Index 0
+                    if (index === 0) {
+                        demoExtraWorkouts.push(
+                            { id: `d1-${athlete.id}`, athleteId: athlete.id, date: addDays(baseDay, 0).toISOString(), title: 'Endurance Fondamentale', description: '45min', status: 'completed', plannedLoad: 250, type: 'workout' },
+                            { id: `d2-${athlete.id}`, athleteId: athlete.id, date: addDays(baseDay, 2).toISOString(), title: 'Fractionné Court', description: '30/30', status: 'planned', plannedLoad: 450, type: 'workout' },
+                            { id: `c1-${athlete.id}`, athleteId: athlete.id, date: addDays(baseDay, 6).toISOString(), title: 'Semi-Marathon Paris', description: 'Objectif Sub 1h30', status: 'planned', plannedLoad: 900, type: 'competition' }
+                        );
+                    }
+                    // 2. Sarah (Trail) -> Index 1
+                    if (athlete.name.includes('Sarah') || index === 1) {
+                        demoExtraWorkouts.push(
+                            { id: `a1-${athlete.id}`, athleteId: athlete.id, date: addDays(baseDay, 1).toISOString(), title: 'Bilan Visio', description: 'Avant vacances', status: 'planned', type: 'appointment' }
+                        );
+                    }
+                    // 3. Bruce (Hyrox) -> Index 2
+                    if (athlete.name.includes('Bruce') || index === 2) {
+                        demoExtraWorkouts.push(
+                            { id: `w8-${athlete.id}`, athleteId: athlete.id, date: addDays(baseDay, 2).toISOString(), title: 'Intervals HR Max', description: 'Burpees & Sprints', status: 'PENDING_ACCEPTANCE', plannedLoad: 600, type: 'workout' },
+                            { id: `t1-${athlete.id}`, athleteId: athlete.id, date: addDays(baseDay, 4).toISOString(), title: 'Test VMA 6min', description: 'Piste', status: 'planned', plannedLoad: 700, type: 'workout' }
+                        );
+                    }
+                });
+
+                // Filter out any context workouts that might overlap/duplicate if needed, or just append
+                // Ideally we merge.
+                setWorkouts([...contextWorkouts, ...demoExtraWorkouts]);
             }
         };
 
         loadCoachData();
-    }, [currentUser, getAthletesForCoach, contextWorkouts]);
+    }, [currentUser?.id, getAthletesForCoach, contextWorkouts]);
 
     const filteredAthletes = athletes.filter(a =>
         selectedClub === 'all' || a.clubId === selectedClub
@@ -540,33 +683,63 @@ export function CoachCalendar() {
                                                 isToday && "bg-emerald-500/5",
                                                 isOnVacation && "bg-amber-500/5 pattern-stripes-slate-100"
                                             )}>
-                                                {visibleWorkout ? (
-                                                    <div className={cn(
-                                                        "p-3 rounded-2xl h-full flex flex-col justify-between transition-all border group/card cursor-pointer",
-                                                        isPending
-                                                            ? "bg-slate-900 border-amber-500/30 hover:border-amber-500/50"
-                                                            : "bg-slate-800 border-slate-700 hover:border-emerald-500/30 hover:bg-slate-700/80"
-                                                    )}>
-                                                        <div className="mb-2">
-                                                            <div className="flex items-center gap-1.5 mb-1 text-[8px] font-bold uppercase tracking-wider">
-                                                                <Zap size={8} className={isPending ? "text-amber-500" : "text-emerald-500"} />
-                                                                <span className={isPending ? "text-amber-500" : "text-slate-400"}>Running</span>
+                                                {visibleWorkout ? (() => {
+                                                    let EventIcon = Zap;
+                                                    let eventLabel = "Session";
+                                                    let eventColor = isPending ? "text-amber-500" : "text-emerald-500";
+                                                    let borderClass = isPending ? "border-amber-500/30 hover:border-amber-500/50" : "border-slate-700 hover:border-emerald-500/30 hover:bg-slate-700/80";
+                                                    let bgClass = isPending ? "bg-slate-900" : "bg-slate-800";
+
+                                                    if (eventType === 'competition') {
+                                                        EventIcon = Trophy;
+                                                        eventLabel = "Compétition";
+                                                        eventColor = "text-yellow-400";
+                                                        borderClass = "border-yellow-500/30 hover:border-yellow-500/50";
+                                                        bgClass = "bg-yellow-500/5";
+                                                    } else if (eventType === 'appointment') {
+                                                        EventIcon = Video;
+                                                        eventLabel = "Rendez-vous";
+                                                        eventColor = "text-indigo-400";
+                                                        borderClass = "border-indigo-500/30 hover:border-indigo-500/50";
+                                                        bgClass = "bg-indigo-500/5";
+                                                    } else {
+                                                        const tLower = (visibleWorkout.title || "").toLowerCase();
+                                                        if (tLower.includes('natation')) { EventIcon = CloudRain; eventLabel = "Natation"; }
+                                                        else if (tLower.includes('vélo')) { EventIcon = Activity; eventLabel = "Cyclisme"; }
+                                                        else if (tLower.includes('renforcement')) { EventIcon = Dumbbell; eventLabel = "Renforcement"; }
+                                                        else if (tLower.includes('yoga')) { EventIcon = Moon; eventLabel = "Récupération"; eventColor = "text-indigo-300"; }
+                                                        else { eventLabel = "Running"; }
+                                                    }
+
+                                                    return (
+                                                        <div className={cn(
+                                                            "p-3 rounded-2xl h-full flex flex-col justify-between transition-all border group/card cursor-pointer",
+                                                            bgClass,
+                                                            borderClass
+                                                        )}>
+                                                            <div className="mb-2">
+                                                                <div className="flex items-center gap-1.5 mb-1 text-[8px] font-bold uppercase tracking-wider">
+                                                                    <EventIcon size={8} className={eventColor} />
+                                                                    <span className={isPending ? "text-amber-500" : "text-slate-400"}>{eventLabel}</span>
+                                                                </div>
+                                                                <div className="flex items-center justify-between gap-1">
+                                                                    <span className={cn(
+                                                                        "text-[10px] font-black truncate uppercase tracking-tighter",
+                                                                        isPending ? "text-amber-500" : "text-white"
+                                                                    )}>{dayWorkout.title}</span>
+                                                                </div>
                                                             </div>
-                                                            <div className="flex items-center justify-between gap-1">
-                                                                <span className={cn(
-                                                                    "text-[10px] font-black truncate uppercase tracking-tighter",
-                                                                    isPending ? "text-amber-500" : "text-white"
-                                                                )}>{dayWorkout.title}</span>
+                                                            <div className="flex justify-between items-end">
+                                                                <div className="flex items-center gap-1">
+                                                                    {eventType !== 'appointment' && (
+                                                                        <span className="text-[9px] font-black text-emerald-500/80 uppercase">{(dayWorkout as any).plannedLoad || 0} AU</span>
+                                                                    )}
+                                                                </div>
+                                                                {isPending && <Clock size={10} className="text-amber-500 animate-pulse" />}
                                                             </div>
                                                         </div>
-                                                        <div className="flex justify-between items-end">
-                                                            <div className="flex items-center gap-1">
-                                                                <span className="text-[9px] font-black text-emerald-500/80 uppercase">{(dayWorkout as any).plannedLoad || 250} AU</span>
-                                                            </div>
-                                                            {isPending && <Clock size={10} className="text-amber-500 animate-pulse" />}
-                                                        </div>
-                                                    </div>
-                                                ) : isOnVacation ? (
+                                                    );
+                                                })() : isOnVacation ? (
                                                     <div className="h-full flex flex-col items-center justify-center opacity-40 hover:opacity-100 transition-opacity gap-1">
                                                         <Moon size={14} className="text-amber-400" />
                                                         <span className="text-[7px] font-black text-amber-500 uppercase tracking-widest">{t('type_vacation')}</span>
@@ -632,15 +805,11 @@ export function CoachCalendar() {
                                 <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-800 text-white text-[8px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all uppercase tracking-widest whitespace-nowrap shadow-2xl">{t('action_message')}</span>
                             </button>
                             <button
-                                onClick={() => navigate(`/planner/ai?athleteId=${selectedAthletes[0]}`)}
-                                className="p-3 hover:bg-white/5 rounded-full text-indigo-400 hover:text-indigo-300 transition-all group relative"
+                                onClick={() => navigate(`/planner?athleteId=${selectedAthletes[0]}`)}
+                                className="p-3 hover:bg-emerald-500/20 rounded-full text-emerald-400 hover:text-emerald-300 transition-all group relative"
                             >
-                                <Brain size={18} />
-                                <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[8px] font-black px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest whitespace-nowrap">{t('action_plan_ai')}</span>
-                            </button>
-                            <button className="p-3 hover:bg-white/5 rounded-full text-emerald-400 hover:text-emerald-300 transition-all group relative">
-                                <FileEdit size={18} />
-                                <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[8px] font-black px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest whitespace-nowrap">{t('action_plan_manual')}</span>
+                                <BrainCircuit size={18} />
+                                <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-800 text-white text-[8px] font-black px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all uppercase tracking-widest whitespace-nowrap shadow-2xl">{t('planificateur')}</span>
                             </button>
                             <button className="p-3 hover:bg-white/5 rounded-full text-slate-400 hover:text-white transition-all group relative">
                                 <CalendarIcon size={18} />

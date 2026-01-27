@@ -5,7 +5,7 @@ import {
     Users, Search, Filter, MoreVertical, Activity, TrendingUp,
     CheckCircle2, UserPlus, Target, MessageSquare, Calendar,
     CreditCard, Brain, FileEdit, HeartPulse, ShieldAlert,
-    Banknote, Zap, Timer, Plus, Send, ClipboardList
+    Banknote, Zap, Timer, Plus, Send, ClipboardList, BrainCircuit
 } from 'lucide-react';
 import { useLanguage } from '@/shared/context/LanguageContext';
 import { useAuthStore } from '@/features/auth/stores/authStore';
@@ -32,14 +32,17 @@ export function AthletesList() {
 
     useEffect(() => {
         const loadAthletes = async () => {
-            if (!currentUser?.id) return;
             setLoading(true);
             try {
-                const data = await getAthletesForCoach(currentUser.id);
+                const coachId = currentUser?.id;
+                let validData = [];
 
-                let validData = data || [];
+                if (coachId) {
+                    const data = await getAthletesForCoach(coachId);
+                    validData = data || [];
+                }
 
-                // DEMO MODE: If no athletes found, generate mock data
+                // DEMO MODE: If no athletes found or no coach session, generate robust mock data
                 if (validData.length === 0) {
                     validData = [
                         {
@@ -50,7 +53,7 @@ export function AthletesList() {
                             role: 'athlete',
                             billingStatus: 'paid',
                             planType: 'AI_ELITE',
-                            healthStatus: 'training_well', // Using a generic status for now
+                            healthStatus: 'training_well',
                             fitScore: 92,
                             ltv: 1450,
                             compliance: 96,
@@ -59,8 +62,8 @@ export function AthletesList() {
                             nextRaceName: 'Paris Marathon',
                             plannedLoad: [100, 120, 110, 140, 160, 180, 120, 200, 220, 150].map((v, i) => ({ x: i, y: v })),
                             actualLoad: [90, 125, 105, 130, 165, 175, 115, 205, 215, 140].map((v, i) => ({ x: i, y: v })),
-                            rpeLoad: [4, 6, 5, 7, 8, 8, 4, 9, 8, 6].map((v, i) => ({ x: i, y: v * 20 })), // Scaled to match load
-                            created_at: new Date().toISOString()
+                            rpeLoad: [4, 6, 5, 7, 8, 8, 4, 9, 8, 6].map((v, i) => ({ x: i, y: v * 20 })),
+                            created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 90).toISOString()
                         },
                         {
                             id: 'mock-2',
@@ -80,7 +83,7 @@ export function AthletesList() {
                             plannedLoad: [100, 120, 110, 140, 160, 180, 120, 200, 220, 150].map((v, i) => ({ x: i, y: v })),
                             actualLoad: [100, 120, 110, 140, 0, 0, 0, 0, 0, 0].map((v, i) => ({ x: i, y: v })),
                             rpeLoad: [4, 6, 5, 7, 0, 0, 0, 0, 0, 0].map((v, i) => ({ x: i, y: v * 20 })),
-                            created_at: new Date().toISOString()
+                            created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 180).toISOString()
                         },
                         {
                             id: 'mock-3',
@@ -100,9 +103,115 @@ export function AthletesList() {
                             plannedLoad: [110, 130, 120, 150, 160, 170, 130, 210, 230, 160].map((v, i) => ({ x: i, y: v })),
                             actualLoad: [105, 125, 115, 145, 155, 165, 125, 205, 225, 155].map((v, i) => ({ x: i, y: v })),
                             rpeLoad: [6, 7, 6, 8, 9, 8, 5, 9, 9, 7].map((v, i) => ({ x: i, y: v * 20 })),
+                            created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString()
+                        },
+                        {
+                            id: 'mock-4',
+                            name: 'Lara Croft',
+                            avatar_url: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop',
+                            email: 'lara.tombraider@example.com',
+                            role: 'athlete',
+                            billingStatus: 'paid',
+                            planType: 'AI_ELITE',
+                            healthStatus: 'training_well',
+                            fitScore: 95,
+                            ltv: 3200,
+                            compliance: 98,
+                            lastWorkout: 'Today',
+                            nextRaceDate: '2026-08-30',
+                            nextRaceName: 'UTMB Mont Blanc',
+                            plannedLoad: Array.from({ length: 10 }, (_, i) => ({ x: i, y: 150 + Math.random() * 100 })),
+                            actualLoad: Array.from({ length: 10 }, (_, i) => ({ x: i, y: 140 + Math.random() * 110 })),
+                            rpeLoad: Array.from({ length: 10 }, (_, i) => ({ x: i, y: 120 + Math.random() * 80 })),
+                            created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 365).toISOString()
+                        },
+                        {
+                            id: 'mock-5',
+                            name: 'Bruce Wayne',
+                            avatar_url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop',
+                            email: 'not.batman@waynecorp.com',
+                            role: 'athlete',
+                            billingStatus: 'paid',
+                            planType: 'MANUAL_PRO',
+                            healthStatus: 'ok',
+                            fitScore: 82,
+                            ltv: 5000,
+                            compliance: 75,
+                            lastWorkout: 'Yesterday',
+                            nextRaceDate: '2026-05-15',
+                            nextRaceName: 'Gotham Triathlon',
+                            plannedLoad: Array.from({ length: 10 }, (_, i) => ({ x: i, y: 80 + Math.random() * 40 })),
+                            actualLoad: Array.from({ length: 10 }, (_, i) => ({ x: i, y: 70 + Math.random() * 50 })),
+                            rpeLoad: Array.from({ length: 10 }, (_, i) => ({ x: i, y: 60 + Math.random() * 30 })),
+                            created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 120).toISOString()
+                        },
+                        {
+                            id: 'mock-neo',
+                            status: 'active',
+                            updated_at: new Date().toISOString(),
+                            name: 'Thomas "Neo" Anderson',
+                            avatar_url: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=400&fit=crop',
+                            email: 'neo@matrix.com',
+                            role: 'athlete',
+                            billingStatus: 'paid',
+                            planType: 'AI_ELITE',
+                            healthStatus: 'training_well',
+                            fitScore: 99,
+                            ltv: 5000,
+                            compliance: 100,
+                            lastWorkout: 'Today',
+                            nextRaceDate: '2199-01-01',
+                            nextRaceName: 'Save Zion',
+                            plannedLoad: Array.from({ length: 10 }, (_, i) => ({ x: i, y: 150 + Math.random() * 100 })),
+                            actualLoad: Array.from({ length: 10 }, (_, i) => ({ x: i, y: 160 + Math.random() * 50 })),
+                            rpeLoad: Array.from({ length: 10 }, (_, i) => ({ x: i, y: 140 + Math.random() * 30 })),
+                            created_at: new Date().toISOString()
+                        },
+                        {
+                            id: 'mock-sarah',
+                            status: 'active',
+                            updated_at: new Date().toISOString(),
+                            name: 'Sarah Connor',
+                            avatar_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop',
+                            email: 'sarah@skynet.net',
+                            role: 'athlete',
+                            billingStatus: 'paid',
+                            planType: 'HYBRID',
+                            healthStatus: 'injured',
+                            fitScore: 85,
+                            ltv: 2500,
+                            compliance: 90,
+                            lastWorkout: 'Yesterday',
+                            nextRaceDate: '2029-08-29',
+                            nextRaceName: 'Judgment Day',
+                            plannedLoad: Array.from({ length: 10 }, (_, i) => ({ x: i, y: 120 + Math.random() * 80 })),
+                            actualLoad: Array.from({ length: 10 }, (_, i) => ({ x: i, y: 100 + Math.random() * 60 })),
+                            rpeLoad: Array.from({ length: 10 }, (_, i) => ({ x: i, y: 110 + Math.random() * 40 })),
+                            created_at: new Date().toISOString()
+                        },
+                        {
+                            id: 'mock-bruce',
+                            status: 'active',
+                            updated_at: new Date().toISOString(),
+                            name: 'Bruce Wayne',
+                            avatar_url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop',
+                            email: 'batman@gotham.city',
+                            role: 'athlete',
+                            billingStatus: 'paid',
+                            planType: 'MANUAL_PRO',
+                            healthStatus: 'tired',
+                            fitScore: 92,
+                            ltv: 10000,
+                            compliance: 88,
+                            lastWorkout: 'Last night',
+                            nextRaceDate: '2026-10-31',
+                            nextRaceName: 'Gotham City Marathon',
+                            plannedLoad: Array.from({ length: 10 }, (_, i) => ({ x: i, y: 180 + Math.random() * 60 })),
+                            actualLoad: Array.from({ length: 10 }, (_, i) => ({ x: i, y: 170 + Math.random() * 70 })),
+                            rpeLoad: Array.from({ length: 10 }, (_, i) => ({ x: i, y: 160 + Math.random() * 50 })),
                             created_at: new Date().toISOString()
                         }
-                    ] as any[]; // Using any to bypass stricter load graph checks for now as we build
+                    ] as any[];
                 } else {
                     // Enrich real data with Mock CRM Data for Demo
                     validData = validData.map(a => ({
@@ -376,23 +485,12 @@ export function AthletesList() {
                             </button>
                         </InfoTooltip>
 
-                        <InfoTooltip content={t('crm_action_ai_plan')}>
+                        <InfoTooltip content={t('planificateur')}>
                             <button
-                                onClick={() => setShowObjectiveModal(true)}
-                                className="p-3 hover:bg-indigo-500/20 rounded-xl text-indigo-400 hover:text-indigo-300 transition-colors relative group"
+                                onClick={() => navigate(`/planner?athleteId=${selectedAthletes[0]}`)}
+                                className="p-3 hover:bg-emerald-500/20 rounded-xl text-emerald-400 hover:text-emerald-300 transition-colors relative group"
                             >
-                                <Brain size={20} />
-                            </button>
-                        </InfoTooltip>
-
-                        <InfoTooltip content={t('crm_action_manual_plan')}>
-                            <button
-                                onClick={() => {
-                                    if (selectedAthletes.length === 1) navigate(`/planner/manual?athlete=${selectedAthletes[0]}`);
-                                }}
-                                className="p-3 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-colors relative group"
-                            >
-                                <FileEdit size={20} />
+                                <BrainCircuit size={20} />
                             </button>
                         </InfoTooltip>
 
@@ -505,7 +603,9 @@ export function AthletesList() {
                             ltv: 0,
                             compliance: 0,
                             lastWorkout: 'Pending',
-                            created_at: new Date().toISOString()
+                            created_at: new Date().toISOString(),
+                            status: 'active',
+                            updated_at: new Date().toISOString()
                         };
 
                         setAthletes(prev => [mockNewAthlete, ...prev]);

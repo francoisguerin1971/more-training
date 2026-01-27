@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, ZoomIn, ZoomOut, Move } from 'lucide-react';
 import { Card } from '@/shared/components/ui/Card';
+import { useLanguage } from '@/shared/context/LanguageContext';
 
 interface ImageCropModalProps {
     imageUrl: string;
@@ -9,6 +10,7 @@ interface ImageCropModalProps {
 }
 
 export function ImageCropModal({ imageUrl, onCropComplete, onCancel }: ImageCropModalProps) {
+    const { t } = useLanguage();
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const imageRef = useRef<HTMLImageElement>(null);
     const [zoom, setZoom] = useState(1);
@@ -172,10 +174,10 @@ export function ImageCropModal({ imageUrl, onCropComplete, onCancel }: ImageCrop
                     <div className="flex items-center justify-between">
                         <div>
                             <h2 className="text-2xl font-black text-white uppercase tracking-tighter">
-                                Recadrer la Photo
+                                {t('crop_photo_title')}
                             </h2>
                             <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">
-                                Centrez votre visage dans le cercle
+                                {t('center_face_hint')}
                             </p>
                         </div>
                         <button
@@ -201,7 +203,7 @@ export function ImageCropModal({ imageUrl, onCropComplete, onCancel }: ImageCrop
                         <div className="absolute top-8 left-8 flex items-center gap-2 bg-slate-950/80 backdrop-blur-sm px-4 py-2 rounded-xl border border-slate-800">
                             <Move size={16} className="text-emerald-400" />
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                Glissez pour centrer
+                                {t('drag_center_hint')}
                             </span>
                         </div>
                     </div>
@@ -242,13 +244,13 @@ export function ImageCropModal({ imageUrl, onCropComplete, onCancel }: ImageCrop
                             onClick={onCancel}
                             className="flex-1 py-4 text-xs font-black text-slate-500 hover:text-white uppercase tracking-widest transition-all"
                         >
-                            Annuler
+                            {t('cancel')}
                         </button>
                         <button
                             onClick={handleCrop}
                             className="flex-1 py-4 bg-emerald-600 hover:bg-emerald-500 text-slate-950 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-emerald-900/40 transition-all"
                         >
-                            Confirmer
+                            {t('confirm')}
                         </button>
                     </div>
                 </div>

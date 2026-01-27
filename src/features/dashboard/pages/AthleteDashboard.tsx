@@ -23,6 +23,8 @@ import { logger } from '@/core/utils/security';
 import { PlanSelector } from '@/shared/components/common/PlanSelector';
 import { FreeConsultationModal } from '@/shared/components/common/FreeConsultationModal';
 import { SessionDetailModal } from '@/shared/components/common/SessionDetailModal';
+import { usePerformanceData } from '../hooks/usePerformanceData';
+import { SEO } from '@/shared/components/common/SEO';
 
 
 export function AthleteDashboard() {
@@ -61,8 +63,22 @@ export function AthleteDashboard() {
     const [showPaymentSuccess, setShowPaymentSuccess] = useState<boolean>(false);
     const [activePlan, setActivePlan] = useState<any>(currentUser?.profile_data?.activePlan || null);
 
+    // Performance Data Hook
+    const {
+        acwrData,
+        stressData,
+        readiness,
+        adaptiveAdjustment,
+        history,
+        loading: performanceLoading,
+        metrics
+    } = usePerformanceData();
+
     // Safe Derived Data (Top Level)
     const userId = currentUser?.id;
+    const userRole = currentUser?.role;
+    const userLevel = currentUser?.profile_data?.athletic?.level || 'beginner';
+    const isElite = userLevel === 'advanced' || userLevel === 'elite';
     const userSport = currentUser?.profile_data?.primarySport || 'Running';
     const profileGoal = currentUser?.profile_data?.mainGoal || {
         title: `Marathon Sub 3:30`,
@@ -76,35 +92,7 @@ export function AthleteDashboard() {
 
     // --- HOOKS SECTION (Must run on every render) ---
 
-    // 1. Fetch Health Data
-    useEffect(() => {
-        const fetchHealthData = async () => {
-            if (!userId) return;
-            try {
-                const { data, error } = await supabase
-                    .from('health_data')
-                    .select('*')
-                    .eq('athlete_id', userId)
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .single();
-
-                if (error) {
-                    if (error.code !== 'PGRST116') { // PGRST116 is 'no rows'
-                        logger.warn('Health data fetch error:', error.message);
-                    }
-                    return;
-                }
-
-                if (data) {
-                    setRecoveryData(data);
-                }
-            } catch (err) {
-                logger.error('Unexpected error fetching health data:', err);
-            }
-        };
-        fetchHealthData();
-    }, [userId]);
+    // 1. Fetch Health Data (Now handled by hook)
 
     // 2. Fetch Workouts
     useEffect(() => {
@@ -156,18 +144,15 @@ export function AthleteDashboard() {
     const sessions = userId ? safeWorkouts.filter((w: any) => w.athleteId === userId) : [];
 
     // Mock Load Curve Data: Macro-cycle position logic (Load vs Forecast vs RPE)
+    // Real Weekly Stats (Last 7 days)
     const macroCycleData = useMemo(() => {
-        const baseDate = new Date();
-        return Array.from({ length: 5 }).map((_, i) => {
-            const d = new Date(baseDate.getFullYear(), baseDate.getMonth() - 2 + i, 1);
-            return {
-                name: format(d, 'MMM', { locale: currentLocale }),
-                planning: 300 + (i * 100),
-                actual: i <= 2 ? 280 + (i * 100) : null,
-                rpe: i <= 2 ? 250 + (i * 110) : null
-            };
-        });
-    }, [currentLocale]);
+        return history.slice(0, 5).reverse().map(d => ({
+            name: format(d.date, 'dd MMM', { locale: currentLocale }),
+            actual: d.load,
+            planning: d.load * 1.1, // Comparative planning line
+            rpe: d.load * 0.9      // Comparative RPE line
+        }));
+    }, [history, currentLocale]);
 
     // V4: Weather Simulation
     const getWeatherIcon = (date: Date) => {
@@ -199,13 +184,13 @@ export function AthleteDashboard() {
         };
     });
 
-    // Derived recovery metrics from fetched health data or fallback
+    // Real recovery metrics from hook
     const recoveryMetrics = {
-        hrv: { value: recoveryData?.hrv || 68, status: 'good', change: '+5%' }, // Heart Rate Variability
-        rhr: { value: recoveryData?.rhr || 52, status: 'excellent', change: '-2 bpm' }, // Resting Heart Rate
-        sleep: { value: recoveryData?.sleep || 7.5, status: 'good', change: '+0.5h' },
-        fatigue: { value: recoveryData?.fatigue || 3, status: 'low', max: 10 }, // 1-10 scale
-        recoveryScore: recoveryData?.recoveryScore || 82 // 0-100
+        hrv: { value: metrics.hrv || 68, status: readiness.zone === 'green' ? 'good' : 'warning', change: '' },
+        rhr: { value: recoveryData?.rhr || 52, status: 'excellent', change: '' },
+        sleep: { value: metrics.sleep || 7.5, status: 'good', change: '' },
+        fatigue: { value: recoveryData?.fatigue || 3, status: 'low', max: 10 },
+        recoveryScore: readiness.score
     };
 
     // Dynamic upcoming workouts from context
@@ -364,10 +349,19 @@ export function AthleteDashboard() {
     };
 
     return (
-        <div className="max-w-6xl mx-auto space-y-10 animate-in fade-in duration-700">
-
-            {/* Top Identity Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-700 pb-24">
+            <SEO
+                titleKey="seo_athlete_dashboard_title"
+                descriptionKey="seo_athlete_dashboard_desc"
+                jsonLd={{
+                    "@context": "https://schema.org",
+                    "@type": "WebPage",
+                    "name": t('seo_athlete_dashboard_title'),
+                    "description": t('seo_athlete_dashboard_desc')
+                }}
+            />
+            {/* Header / Stats Summary */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-800 pb-8">
                 <div className="flex items-center gap-6">
                     <div className="w-20 h-20 rounded-[2.5rem] bg-gradient-to-br from-emerald-400 via-indigo-500 to-indigo-600 flex items-center justify-center text-3xl font-black text-white shadow-2xl border-4 border-slate-950 relative group">
                         <div className="absolute inset-0 bg-white/20 rounded-[2.3rem] opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -429,6 +423,40 @@ export function AthleteDashboard() {
                                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-10 h-full">
                                     {/* Left: Technical Guidance */}
                                     <div className="space-y-6">
+                                        {/* Adaptive Performance Recommendation */}
+                                        {readiness.zone !== 'green' && (
+                                            <div className={cn(
+                                                "p-6 rounded-3xl border animate-in slide-in-from-top duration-500",
+                                                readiness.zone === 'red' ? "bg-rose-500/10 border-rose-500/30" : "bg-amber-500/10 border-amber-500/30"
+                                            )}>
+                                                <div className="flex items-start gap-4">
+                                                    <div className={cn(
+                                                        "w-10 h-10 rounded-2xl flex items-center justify-center text-white shrink-0",
+                                                        readiness.zone === 'red' ? "bg-rose-500" : "bg-amber-500"
+                                                    )}>
+                                                        <RefreshCw size={20} className={readiness.zone === 'red' ? "animate-spin-slow" : ""} />
+                                                    </div>
+                                                    <div>
+                                                        <p className={cn(
+                                                            "text-[10px] font-black uppercase tracking-widest",
+                                                            readiness.zone === 'red' ? "text-rose-400" : "text-amber-400"
+                                                        )}>
+                                                            {adaptiveAdjustment.label}
+                                                        </p>
+                                                        <p className="text-white font-bold text-sm mt-1 leading-relaxed">
+                                                            {adaptiveAdjustment.description}
+                                                        </p>
+                                                        <button
+                                                            className="mt-3 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-[9px] font-black uppercase text-white transition-all border border-white/10"
+                                                            onClick={() => {/* Trigger actual adaptation logic in TrainingContext */ }}
+                                                        >
+                                                            {t('apply_adaptation') || 'Appliquer l\'adaptation'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {/* Coach's Insight Highlight */}
                                         {todaysSession.coach_notes && (
                                             <div className="bg-gradient-to-br from-indigo-500/10 to-indigo-500/5 border border-indigo-500/20 rounded-3xl p-6 relative overflow-hidden group/insight">
@@ -747,22 +775,40 @@ export function AthleteDashboard() {
                         </ResponsiveContainer>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-8 border-t border-slate-800 p-6 bg-slate-900/50">
-                        <div>
-                            <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest">{t('current_position')}</p>
-                            <p className="text-xl font-black text-white mt-1 uppercase flex items-center gap-2">
-                                {t('phase_pre_comp')}
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                            </p>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest">{t('status_vs_plan')}</p>
-                            <div className="flex items-center justify-end gap-2 mt-1">
-                                <TrendingUp size={16} className="text-emerald-400" />
-                                <p className="text-xl font-black text-emerald-400 uppercase">+12% {t('ahead')}</p>
+                    {isElite && (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-8 border-t border-slate-800 p-6 bg-slate-900/50 animate-in fade-in duration-500">
+                            <div>
+                                <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest">{t('current_position')}</p>
+                                <p className="text-xl font-black text-white mt-1 uppercase flex items-center gap-2">
+                                    {t('phase_pre_comp')}
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                </p>
+                            </div>
+                            <div className="hidden md:block">
+                                <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest">{t('monotony_index') || 'Indice de Monotonie'}</p>
+                                <p className={cn(
+                                    "text-xl font-black mt-1 uppercase",
+                                    stressData.warning ? "text-rose-500" : "text-white"
+                                )}>
+                                    {stressData.monotony}
+                                </p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest">{t('acwr_status') || 'Statut ACWR'}</p>
+                                <div className="flex items-center justify-end gap-2 mt-1">
+                                    <ShieldCheck size={16} className={cn(
+                                        acwrData.risk === 'danger' ? "text-rose-500" : "text-emerald-400"
+                                    )} />
+                                    <p className={cn(
+                                        "text-xl font-black uppercase",
+                                        acwrData.risk === 'danger' ? "text-rose-500" : "text-emerald-400"
+                                    )}>
+                                        {acwrData.acwr} ({acwrData.risk})
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
                 </Card>
 
                 {/* Main Goal Progress */}

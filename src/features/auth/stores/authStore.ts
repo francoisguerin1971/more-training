@@ -30,6 +30,8 @@ interface AuthActions {
     getSharedResources: () => Promise<any[]>;
     saveCoachResource: (resource: any) => Promise<{ data: any; error: any }>;
     deleteCoachResource: (resourceId: string) => Promise<{ error: any }>;
+    getAthleteTrainingHistory: (athleteId: string) => Promise<any[]>;
+    getAthleteStats: (athleteId: string) => Promise<any>;
 }
 
 export type AuthStore = AuthState & AuthActions;
@@ -162,7 +164,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
                 .in('status', ['ACTIVE', 'PENDING']);
 
             if (error) return [];
-            return (data as any[])?.map(rel => {
+            const realAthletes = (data as any[])?.map(rel => {
                 const athlete = rel.athlete;
                 return {
                     id: athlete.id,
@@ -174,6 +176,14 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
                     plan: rel.subscription_plan
                 };
             }) || [];
+
+            const mockAthletes = [
+                { id: 'mock-neo', name: 'Thomas Anderson', email: 'neo@matrix.com', avatar: 'TA', profile: {}, relationshipStatus: 'ACTIVE', plan: 'Elite', status: 'active', updated_at: new Date().toISOString(), created_at: new Date().toISOString() },
+                { id: 'mock-sarah', name: 'Sarah Connor', email: 'sarah@skynet.net', avatar: 'SC', profile: {}, relationshipStatus: 'ACTIVE', plan: 'Pro', status: 'active', updated_at: new Date().toISOString(), created_at: new Date().toISOString() },
+                { id: 'mock-bruce', name: 'Bruce Wayne', email: 'batman@gotham.city', avatar: 'BW', profile: {}, relationshipStatus: 'ACTIVE', plan: 'Elite', status: 'active', updated_at: new Date().toISOString(), created_at: new Date().toISOString() }
+            ];
+
+            return [...realAthletes, ...mockAthletes];
         } catch (err: any) {
             return [];
         }
@@ -465,5 +475,22 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         }
     },
 
-    setShowInviteModal: (show: boolean) => set({ showInviteModal: show })
+    setShowInviteModal: (show: boolean) => set({ showInviteModal: show }),
+
+    getAthleteTrainingHistory: async (athleteId: string) => {
+        // Placeholder for future implementation
+        return [];
+    },
+
+    getAthleteStats: async (athleteId: string) => {
+        // Mock stats for the AI Planner to function until complex DB analytics are ready
+        return {
+            fatigueLevel: 25,
+            injuryRisk: 12,
+            complianceRate: 94,
+            fitnessLevel: 75,
+            lastMonthVolume: 120,
+            loadTrend: 'stable'
+        };
+    }
 }));

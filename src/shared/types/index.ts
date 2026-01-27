@@ -92,6 +92,8 @@ export interface Plan {
     billing_interval?: 'MONTH' | 'ONE_TIME' | 'YEAR';
     interval?: 'MONTH' | 'ONE_TIME' | 'YEAR'; // Alias for compatibility
     meta?: any;
+    athleteIds?: string[];
+    createdAt?: string; // For compatibility
     created_at?: string;
     updated_at?: string;
 }
