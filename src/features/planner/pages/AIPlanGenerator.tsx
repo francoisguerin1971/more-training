@@ -113,21 +113,28 @@ export function AIPlanGenerator() {
 
     // Loading & Result State
     const [isGenerating, setIsGenerating] = useState(false);
-    const [generatedPlan, setGeneratedPlan] = useState(null);
-    const [editableSessions, setEditableSessions] = useState([]);
+    const [generatedPlan, setGeneratedPlan] = useState<any>(null);
+    const [editableSessions, setEditableSessions] = useState<any[]>([]);
     const [messageToAthlete, setMessageToAthlete] = useState('');
-    const [synthesis, setSynthesis] = useState(null);
-    const [recommendations, setRecommendations] = useState(null);
+    const [synthesis, setSynthesis] = useState<any>(null);
+    const [recommendations, setRecommendations] = useState<any[]>([]);
     const [rationale, setRationale] = useState('');
     const [showSuccess, setShowSuccess] = useState(false);
 
-    // Get real athletes for this coach
-    const athletes = React.useMemo(() => getAthletesForCoach(currentUser.id), [currentUser.id, getAthletesForCoach]);
+    // Get real athletes for this coach (async fetch)
+    const [athletes, setAthletes] = useState<any[]>([]);
+    React.useEffect(() => {
+        if (currentUser?.id) {
+            getAthletesForCoach(currentUser.id).then(data => {
+                if (Array.isArray(data)) setAthletes(data);
+            });
+        }
+    }, [currentUser?.id, getAthletesForCoach]);
 
     // Pre-fill data when athlete is selected
     React.useEffect(() => {
-        if (selectedAthletes.length === 1) {
-            const athlete = athletes.find(a => a.id === selectedAthletes[0]);
+        if (selectedAthletes.length === 1 && athletes.length > 0) {
+            const athlete = athletes.find((a: any) => a.id === selectedAthletes[0]);
             if (athlete?.profile) {
                 // Pre-fill biometrics
                 setBiometrics({
