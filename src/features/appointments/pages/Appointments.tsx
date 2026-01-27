@@ -11,7 +11,7 @@ import { cn } from '@/shared/lib/utils';
 
 export function Appointments() {
     const { t } = useLanguage();
-    const { currentUser, getCoachesForAthlete } = useAuthStore();
+    const { currentUser, getCoachesForAthlete, getAthletesForCoach } = useAuthStore();
     const isPro = currentUser?.role === 'pro';
 
     // Coach State
