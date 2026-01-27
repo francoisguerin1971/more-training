@@ -4040,6 +4040,10 @@ export const translations: Translations = {
         months: "Mois",
         weeks: "Semaines",
         days: "Jours",
+        anamnesis_back_selection: "Retour à la Sélection",
+        sandbox_title: "Mode Développement",
+        sandbox_subtitle: "Environnement de Test",
+        verify_account_btn: "Vérifier mon Compte",
 
         // Extra Landing & Dashboard Content
         landing_hero_title: "Trouvez votre Coach Élite. Dépassez vos Objectifs.",
