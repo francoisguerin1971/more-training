@@ -177,6 +177,7 @@ export function AIPlanGenerator() {
         healthRecovery: HealthRecovery;
         coachPreferences: CoachPreferences;
     }) => {
+        // Update state for display purposes
         setBiometrics(data.biometrics);
         setSportObjectives(data.sportObjectives);
         setAvailability(data.availability);
@@ -188,7 +189,7 @@ export function AIPlanGenerator() {
         // Logic split based on mode
         if (data.coachPreferences.reportType === 'manual') {
             // Manual Mode: Skip AI generation, go straight to Editor with empty/template session structure
-            const totalWeeks = parseInt(data.periodization.deadlineValue) || 12; // Simplified logic for manual
+            const totalWeeks = parseInt(data.periodization.deadlineValue) || 12;
             setGeneratedPlan({
                 chartData: [],
                 sessions: [],
@@ -201,33 +202,44 @@ export function AIPlanGenerator() {
                     rationale: "Plan créé manuellement en Studio Expert."
                 }
             });
-            setEditableSessions([]); // Start clean
+            setEditableSessions([]);
             setStep(3);
         } else {
-            // AI Mode
-            generateAIPlan();
+            // AI Mode - Pass data directly to avoid async state issues
+            generateAIPlan(data);
         }
     };
 
-    const generateAIPlan = () => {
+    const generateAIPlan = (data: {
+        biometrics: Biometrics;
+        sportObjectives: SportObjectives;
+        availability: Availability;
+        periodization: Periodization;
+        equipment: Equipment;
+        healthRecovery: HealthRecovery;
+        coachPreferences: CoachPreferences;
+    }) => {
         setIsGenerating(true);
-        const EXERCISE_LIBRARY = getExerciseLibrary(); // Use localized library with t()
+        const EXERCISE_LIBRARY = getExerciseLibrary();
 
         setTimeout(() => {
-            // Generate Rationale FIRST (must be declared before use in synthesisData)
-            const rationaleText = `Ce plan est construit sur une approche de périodisation ${periodization.intensity === 'intensive' ? 'bloc par bloc' : 'linéaire progressive'}. 
-                L'objectif est d'optimiser le volume en ${sportObjectives.primarySport} tout en intégrant du renforcement spécifique pour prévenir les blessures liées à l'augmentation de la charge. 
-                Nous favorisons ${periodization.loadPreference === 'aggressive' ? 'une montée rapide en charge' : 'une adaptation physiologique durable'} avec des fenêtres de récupération toutes les 4 semaines (cycles de Deload).`;
+            // Use data from parameter, not state (to avoid async issues)
+            const { biometrics: bio, sportObjectives: sport, availability: avail, periodization: period, equipment: equip, healthRecovery: health, coachPreferences: prefs } = data;
+
+            // Generate Rationale FIRST
+            const rationaleText = `Ce plan est construit sur une approche de périodisation ${period.intensity === 'intensive' ? 'bloc par bloc' : 'linéaire progressive'}. 
+                L'objectif est d'optimiser le volume en ${sport.primarySport} tout en intégrant du renforcement spécifique pour prévenir les blessures liées à l'augmentation de la charge. 
+                Nous favorisons ${period.loadPreference === 'aggressive' ? 'une montée rapide en charge' : 'une adaptation physiologique durable'} avec des fenêtres de récupération toutes les 4 semaines (cycles de Deload).`;
             setRationale(rationaleText);
 
-            // Generate Synthesis (now rationaleText is available)
+            // Generate Synthesis
             const synthesisData = {
                 athlete: athleteData ?
-                    `${athleteData.athlete.name}, ${biometrics.age} ${t('years_suffix') || 'ans'}, ${biometrics.gender === 'male' ? t('gender_male') : t('gender_female')}, ${biometrics.weight}kg, ${biometrics.height}cm` :
-                    `${t('default_athlete_name')} ${biometrics.age} ${t('years_suffix') || 'ans'}, ${biometrics.weight}kg`,
-                objectives: `${sportObjectives.objective} ${t('in_sport')} ${sportObjectives.primarySport}${sportObjectives.targetEvent ? ` - ${sportObjectives.targetEvent}` : ''} (${t('anamnesis_level')}: ${sportObjectives.level})`,
-                availability: `${availability.days.length} ${t('days_per_week') || 'jours/semaine'} (${availability.days.join(', ')})${Object.keys(availability.timePerDay).length > 0 ? `, ${t('variable_time_per_day') || 'temps variable par jour'}` : ''}`,
-                constraints: healthRecovery.injuries || t('no_injuries_reported'),
+                    `${athleteData.athlete.name}, ${bio.age} ${t('years_suffix') || 'ans'}, ${bio.gender === 'male' ? t('gender_male') : t('gender_female')}, ${bio.weight}kg, ${bio.height}cm` :
+                    `${t('default_athlete_name')} ${bio.age} ${t('years_suffix') || 'ans'}, ${bio.weight}kg`,
+                objectives: `${sport.objective} ${t('in_sport')} ${sport.primarySport}${sport.targetEvent ? ` - ${sport.targetEvent}` : ''} (${t('anamnesis_level')}: ${sport.level})`,
+                availability: `${avail.days.length} ${t('days_per_week') || 'jours/semaine'} (${avail.days.join(', ')})${Object.keys(avail.timePerDay).length > 0 ? `, ${t('variable_time_per_day') || 'temps variable par jour'}` : ''}`,
+                constraints: health.injuries || t('no_injuries_reported'),
                 rationale: rationaleText
             };
             setSynthesis(synthesisData);
@@ -258,23 +270,23 @@ export function AIPlanGenerator() {
             }
 
             // Check cross-training
-            if (sportObjectives.crossTraining.length > 0) {
+            if (sport.crossTraining.length > 0) {
                 recs.push({
                     type: 'training',
                     priority: 'low',
                     title: 'Sports Croisés Intégrés',
-                    message: `${sportObjectives.crossTraining.join(', ')} seront intégrés pour optimiser la performance globale.`,
+                    message: `${sport.crossTraining.join(', ')} seront intégrés pour optimiser la performance globale.`,
                     action: "Varier les stimuli d'entraînement"
                 });
             }
 
             // Check recovery preferences
-            if (healthRecovery.recoveryPreferences.length > 0) {
+            if (health.recoveryPreferences.length > 0) {
                 recs.push({
                     type: 'info',
                     priority: 'low',
                     title: t('recovery_protocols_title'),
-                    message: `${t('preferences_prefix')}: ${healthRecovery.recoveryPreferences.join(', ')}`,
+                    message: `${t('preferences_prefix')}: ${health.recoveryPreferences.join(', ')}`,
                     action: t('plan_after_intensive')
                 });
             }
@@ -283,14 +295,14 @@ export function AIPlanGenerator() {
 
             // Calculate total weeks based on deadline
             let totalWeeks = 4;
-            if (periodization.deadlineType === 'months') {
-                totalWeeks = parseInt(periodization.deadlineValue) * 4;
-            } else if (periodization.deadlineType === 'weeks') {
-                totalWeeks = parseInt(periodization.deadlineValue);
-            } else if (periodization.deadlineType === 'days') {
-                totalWeeks = Math.ceil(parseInt(periodization.deadlineValue) / 7);
-            } else if (periodization.deadlineType === 'years') {
-                totalWeeks = parseInt(periodization.deadlineValue) * 52;
+            if (period.deadlineType === 'months') {
+                totalWeeks = parseInt(period.deadlineValue) * 4;
+            } else if (period.deadlineType === 'weeks') {
+                totalWeeks = parseInt(period.deadlineValue);
+            } else if (period.deadlineType === 'days') {
+                totalWeeks = Math.ceil(parseInt(period.deadlineValue) / 7);
+            } else if (period.deadlineType === 'years') {
+                totalWeeks = parseInt(period.deadlineValue) * 52;
             }
 
             const startDate = startOfToday();
@@ -328,7 +340,7 @@ export function AIPlanGenerator() {
                     const date = addDays(startDate, (w * 7) + d);
                     const dayName = daysMap[date.getDay()];
 
-                    if (availability.days.includes(dayName) || availability.days.length === 0) {
+                    if (avail.days.includes(dayName) || avail.days.length === 0) {
                         let type = t('exercise_endurance_fondamentale') || 'Endurance Fondamentale';
                         let visual = visualPrompts[2];
                         let details = {};
@@ -396,7 +408,7 @@ export function AIPlanGenerator() {
                         }
 
                         // Check equipment availability for specific targets
-                        const hasWatch = equipment.available.includes('Montre GPS');
+                        const hasWatch = equip.available.includes('Montre GPS');
                         const intensity = hasWatch
                             ? `${t('target_pace')}: ${type.includes('VMA') ? 'Pace < 3:45/km' : 'FC < 145bpm'}`
                             : `${t('sensation_vma')}: ${type.includes('VMA') ? t('sensation_vma') : t('sensation_easy')}`;
@@ -423,8 +435,8 @@ export function AIPlanGenerator() {
                 chartData,
                 sessions: dailySessions,
                 meta: {
-                    objective: sportObjectives.objective,
-                    level: sportObjectives.level,
+                    objective: sport.objective,
+                    level: sport.level,
                     total_weeks: totalWeeks,
                     synthesis: synthesisData,
                     recommendations: recs,
