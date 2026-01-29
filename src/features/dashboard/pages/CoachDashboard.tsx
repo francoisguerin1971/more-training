@@ -269,7 +269,7 @@ export function CoachDashboard() {
     ];
 
     return (
-        <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700 pb-20">
+        <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500 pb-20">
             <SEO
                 titleKey="seo_coach_dashboard_title"
                 descriptionKey="seo_coach_dashboard_desc"

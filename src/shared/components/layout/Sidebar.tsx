@@ -28,9 +28,8 @@ export function Sidebar({ onLogout }: SidebarProps) {
         { path: '/athletes', label: t('athletes'), icon: Users },
         // Planning Suite
         // Planning Suite
-        { path: '/calendar', label: t('planner'), icon: LayoutGrid }, // Global Calendar
-        { path: '/planner', label: t('planificateur'), icon: BrainCircuit, group: 'MasterPlan' },
-        // { path: '/ai-planner', label: t('ai_planner_title'), icon: BrainCircuit, group: 'MasterPlan' },
+        { path: '/calendar', label: t('schedule'), icon: LayoutGrid }, // Global Calendar
+        { path: '/planner', label: t('ai_planner_title'), icon: BrainCircuit, group: 'MasterPlan' },
         // { path: '/manual-builder', label: t('manual_studio'), icon: List, group: 'MasterPlan' },
 
         { path: '/integrations', label: t('integrations'), icon: Watch },

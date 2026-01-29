@@ -515,7 +515,7 @@ export function LandingPage() {
                             <ul className="space-y-4 text-xs font-bold text-slate-500 uppercase tracking-tight">
                                 <li onClick={() => navigate('/marketplace')} className="hover:text-emerald-400 cursor-pointer transition-colors">{t('footer_marketplace')}</li>
                                 <li onClick={onViewPricing} className="hover:text-emerald-400 cursor-pointer transition-colors">{t('footer_for_coaches_link')}</li>
-                                <li onClick={() => navigate('/ai-planner')} className="hover:text-emerald-400 cursor-pointer transition-colors">{t('footer_ai_engine_link')}</li>
+                                <li onClick={() => navigate('/planner')} className="hover:text-emerald-400 cursor-pointer transition-colors">{t('footer_ai_engine_link')}</li>
                             </ul>
                         </div>
                         <div>

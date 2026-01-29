@@ -123,7 +123,7 @@ function App() {
 
                   {/* Athlete / Feature Specific */}
                   <Route path="/planner" element={<AIPlanGenerator />} />
-                  {/* /ai-planner route merged into /planner */}
+                  <Route path="/ai-planner" element={<Navigate to="/planner" replace />} />
                   <Route path="/manual-builder" element={<ManualPlanBuilder />} />
                   <Route path="/integrations" element={<Integrations />} />
                   <Route path="/live" element={<LiveConnection onClose={() => window.history.back()} />} />

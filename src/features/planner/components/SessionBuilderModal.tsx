@@ -7,7 +7,7 @@ import {
     Image as ImageIcon, MoreVertical
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { Session } from '@/features/planner/types'; // Assuming types are central or locally defined
+import { Workout as Session } from '@/features/planner/types/training';
 import { ExerciseSketchService } from '@/shared/services/ExerciseSketchService';
 
 interface SessionBuilderModalProps {
