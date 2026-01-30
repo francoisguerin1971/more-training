@@ -8,7 +8,7 @@ import {
 import { useLanguage } from '@/shared/context/LanguageContext';
 import { useAuthStore } from '@/features/auth/stores/authStore';
 import { cn } from '@/shared/lib/utils';
-import { jsPDF } from 'jspdf';
+// jspdf is loaded dynamically in downloadPDF for better performance
 import { supabase } from '@/core/services/supabase';
 import { format } from 'date-fns';
 
@@ -44,6 +44,8 @@ export function Invoices() {
     }, [currentUser]);
 
     const downloadPDF = async (invoice) => {
+        // Dynamic import for better performance - jspdf is only loaded when user clicks download
+        const { jsPDF } = await import('jspdf');
         const doc = new jsPDF();
 
         // Determine Seller (Platform or Coach)

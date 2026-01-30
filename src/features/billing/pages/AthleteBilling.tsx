@@ -8,7 +8,7 @@ import {
 import { useLanguage } from '@/shared/context/LanguageContext';
 import { useAuthStore } from '@/features/auth/stores/authStore';
 import { cn } from '@/core/utils/cn';
-import { jsPDF } from 'jspdf';
+// jspdf is loaded dynamically in downloadPDF for better performance
 import { supabase } from '@/core/services/supabase';
 import { format, addMonths } from 'date-fns';
 
@@ -63,7 +63,8 @@ export function AthleteBilling() {
     }, [currentUser]);
 
     const downloadPDF = async (invoice: any) => {
-        // ... (PDF generation logic kept same)
+        // Dynamic import for better performance - jspdf is only loaded when user clicks download
+        const { jsPDF } = await import('jspdf');
         const doc = new jsPDF();
         let seller = {
             name: 'More Training Platform',
