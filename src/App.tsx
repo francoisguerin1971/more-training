@@ -59,7 +59,6 @@ const ProtectedLayout = ({ user, logout }: { user: any; logout: () => void }) =>
 };
 
 const CoachProfileEditor = lazy(() => import('@/features/marketplace/pages/CoachProfileEditor').then(m => ({ default: m.CoachProfileEditor })));
-const InvoicesPage = lazy(() => import('@/features/billing/pages/Invoices').then(m => ({ default: m.Invoices })));
 
 function App() {
   const { currentUser, loading, init, logout, isDualRole } = useAuthStore();
@@ -116,7 +115,7 @@ function App() {
                     <>
                       <Route path="/athletes" element={<AthletesList />} />
                       <Route path="/pricing" element={<CoachPricing />} />
-                      <Route path="/invoices" element={<InvoicesPage />} />
+                      <Route path="/invoices" element={<Invoices />} />
                       <Route path="/my-profile" element={<CoachProfileEditor />} />
                     </>
                   )}
