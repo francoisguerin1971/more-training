@@ -6,6 +6,7 @@ import { SandboxBanner } from '@/shared/components/common/SandboxBanner';
 import { Chatbot } from '@/shared/components/common/Chatbot';
 import { TrainingProvider } from '@/features/planner/contexts/TrainingContext';
 import { GlobalInviteModal } from '@/shared/components/common/GlobalInviteModal';
+import { ErrorBoundary } from '@/shared/components/common/ErrorBoundary';
 import { Toaster } from 'sonner';
 
 // Lazy loaded components from features
@@ -76,71 +77,73 @@ function App() {
       <Toaster richColors position="top-right" />
       <TrainingProvider>
         <GlobalInviteModal />
-        <Suspense fallback={<PageLoading />}>
-          <Routes>
-            {/* Common Onboarding - Stable across auth states */}
-            <Route path="/onboarding" element={<Onboarding />} />
+        <ErrorBoundary>
+          <Suspense fallback={<PageLoading />}>
+            <Routes>
+              {/* Common Onboarding - Stable across auth states */}
+              <Route path="/onboarding" element={<Onboarding />} />
 
-            {/* Public Routes */}
-            {!currentUser ? (
-              <>
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/login" element={<Login onLogin={(e: string, p: string) => useAuthStore.getState().login(e, p)} />} />
-                <Route path="/marketplace" element={<CoachMarketplace onSelectCoach={() => { }} onBackToLanding={() => { }} />} />
-                <Route path="/book/:pseudo" element={<PublicBooking />} />
-                <Route path="*" element={<Navigate to="/onboarding" replace />} />
-              </>
-            ) : (
-              <>
-                {/* Portal Selection for Dual Roles */}
-                <Route path="/portal" element={<PortalSelection />} />
+              {/* Public Routes */}
+              {!currentUser ? (
+                <>
+                  <Route path="/" element={<LandingPage />} />
+                  <Route path="/login" element={<Login onLogin={(e: string, p: string) => useAuthStore.getState().login(e, p)} />} />
+                  <Route path="/marketplace" element={<CoachMarketplace onSelectCoach={() => { }} onBackToLanding={() => { }} />} />
+                  <Route path="/book/:pseudo" element={<PublicBooking />} />
+                  <Route path="*" element={<Navigate to="/onboarding" replace />} />
+                </>
+              ) : (
+                <>
+                  {/* Portal Selection for Dual Roles */}
+                  <Route path="/portal" element={<PortalSelection />} />
 
-                {/* Protected Routes */}
-                <Route element={<ProtectedLayout user={currentUser} logout={logout} />}>
-                  {/* Dashboard Choice */}
-                  <Route path="/dashboard" element={
-                    currentUser.role === 'pro' ? <CoachDashboard /> : <AthleteDashboard />
-                  } />
+                  {/* Protected Routes */}
+                  <Route element={<ProtectedLayout user={currentUser} logout={logout} />}>
+                    {/* Dashboard Choice */}
+                    <Route path="/dashboard" element={
+                      currentUser.role === 'pro' ? <CoachDashboard /> : <AthleteDashboard />
+                    } />
 
-                  {/* Common Views */}
-                  <Route path="/calendar" element={
-                    currentUser.role === 'pro' ? <CoachCalendar /> : <AthleteCalendar />
-                  } />
-                  <Route path="/messages" element={<Messages />} />
-                  <Route path="/settings" element={<AccountSettings />} />
+                    {/* Common Views */}
+                    <Route path="/calendar" element={
+                      currentUser.role === 'pro' ? <CoachCalendar /> : <AthleteCalendar />
+                    } />
+                    <Route path="/messages" element={<Messages />} />
+                    <Route path="/settings" element={<AccountSettings />} />
 
-                  {/* Pro Specific */}
+                    {/* Pro Specific */}
 
-                  {currentUser.role === 'pro' && (
-                    <>
-                      <Route path="/athletes" element={<AthletesList />} />
-                      <Route path="/pricing" element={<CoachPricing />} />
-                      <Route path="/invoices" element={<Invoices />} />
-                      <Route path="/my-profile" element={<CoachProfileEditor />} />
-                    </>
-                  )}
+                    {currentUser.role === 'pro' && (
+                      <>
+                        <Route path="/athletes" element={<AthletesList />} />
+                        <Route path="/pricing" element={<CoachPricing />} />
+                        <Route path="/invoices" element={<Invoices />} />
+                        <Route path="/my-profile" element={<CoachProfileEditor />} />
+                      </>
+                    )}
 
-                  {/* Athlete / Feature Specific */}
-                  <Route path="/planner" element={<AIPlanGenerator />} />
-                  <Route path="/ai-planner" element={<Navigate to="/planner" replace />} />
-                  <Route path="/manual-builder" element={<ManualPlanBuilder />} />
-                  <Route path="/integrations" element={<Integrations />} />
-                  <Route path="/live" element={<LiveConnection onClose={() => window.history.back()} />} />
-                  <Route path="/appointments" element={<Appointments />} />
-                  <Route path="/billing" element={<AthleteBilling />} />
-                  <Route path="/resources" element={<ResourcesLibrary />} />
+                    {/* Athlete / Feature Specific */}
+                    <Route path="/planner" element={<AIPlanGenerator />} />
+                    <Route path="/ai-planner" element={<Navigate to="/planner" replace />} />
+                    <Route path="/manual-builder" element={<ManualPlanBuilder />} />
+                    <Route path="/integrations" element={<Integrations />} />
+                    <Route path="/live" element={<LiveConnection onClose={() => window.history.back()} />} />
+                    <Route path="/appointments" element={<Appointments />} />
+                    <Route path="/billing" element={<AthleteBilling />} />
+                    <Route path="/resources" element={<ResourcesLibrary />} />
 
-                  {/* Redirect dashboard by default */}
-                  <Route path="/" element={<Navigate to={isDualRole ? "/portal" : "/dashboard"} replace />} />
-                  <Route path="/login" element={<Navigate to={isDualRole ? "/portal" : "/dashboard"} replace />} />
-                  <Route path="*" element={<Navigate to={isDualRole ? "/portal" : "/dashboard"} replace />} />
-                </Route>
-              </>
-            )}
-          </Routes>
-        </Suspense>
+                    {/* Redirect dashboard by default */}
+                    <Route path="/" element={<Navigate to={isDualRole ? "/portal" : "/dashboard"} replace />} />
+                    <Route path="/login" element={<Navigate to={isDualRole ? "/portal" : "/dashboard"} replace />} />
+                    <Route path="*" element={<Navigate to={isDualRole ? "/portal" : "/dashboard"} replace />} />
+                  </Route>
+                </>
+              )}
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
       </TrainingProvider>
-    </BrowserRouter>
+    </BrowserRouter >
   );
 }
 
