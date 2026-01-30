@@ -1118,7 +1118,6 @@ export function AIPlanGenerator() {
                         <EliteTrainingReport
                             data={buildEliteReportData()!}
                             onBack={() => setStep(2)}
-                            onExport={() => console.log('Export PDF')}
                             onApplyPlan={handleApplyPlan}
                         />
                     )}

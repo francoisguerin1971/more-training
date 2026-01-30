@@ -108,8 +108,6 @@ export function AccountSettings() {
     };
 
     const handleSave = async () => {
-        console.log('=== SAVE STARTED ===');
-        console.log('Form data:', formData);
         setIsSaving(true);
 
         // Safety timeout: reset state after 15 seconds no matter what
@@ -144,23 +142,19 @@ export function AccountSettings() {
                 }
             };
 
-            console.log('Sending updates to authStore:', updates);
 
             const result = await updateProfile(updates);
-            console.log('Update result in handleSave:', result);
 
             if (result?.error) {
                 console.error("Save error:", result.error);
                 alert(`Erreur de sauvegarde: ${result.error.message || 'Erreur inconnue'}`);
             } else {
-                console.log('Save successful in handleSave!');
                 setIsDirty(false);
             }
         } catch (e: any) {
             console.error("Save exception in handleSave:", e);
             alert(`Erreur: ${e.message || 'Sauvegarde échouée'}`);
         } finally {
-            console.log('=== SAVE COMPLETE ===');
             clearTimeout(timeout);
             setIsSaving(false);
         }
@@ -213,25 +207,20 @@ export function AccountSettings() {
         }, 30000);
 
         try {
-            console.log('Starting avatar upload...', croppedFile.name, croppedFile.size);
 
             if (uploadAvatar) {
                 const result = await uploadAvatar(croppedFile);
-                console.log('Upload result in handleCropComplete:', result);
 
                 if (result.error) {
                     console.error("Avatar upload error:", result.error);
                     alert(`Échec de l'upload: ${result.error.message || 'Erreur inconnue'}`);
                 } else {
-                    console.log('Avatar uploaded successfully:', result.path);
                 }
             } else {
-                console.log('uploadAvatar not available, using fallback');
                 // Fallback if not available yet in store
                 const reader = new FileReader();
                 reader.onloadend = async () => {
                     const result = reader.result as string;
-                    console.log('Using base64 fallback, size:', result.length);
                     await updateProfile({ avatar: result });
                 };
                 reader.readAsDataURL(croppedFile);
@@ -240,7 +229,6 @@ export function AccountSettings() {
             console.error("Avatar upload exception:", e);
             alert(`Erreur: ${e.message || 'Upload échoué'}`);
         } finally {
-            console.log('=== UPLOAD COMPLETE ===');
             clearTimeout(timeout);
             setIsUploading(false);
             setSelectedImage(null);
@@ -263,8 +251,6 @@ export function AccountSettings() {
     const handlePasswordUpdate = async () => {
         if (isUpdatingPassword) return;
 
-        console.log('=== PASSWORD UPDATE STARTED ===');
-        console.log('User ID:', currentUser?.id);
 
         if (!passwordData.new || !passwordData.confirm) {
             alert("Veuillez remplir les champs du nouveau mot de passe.");
@@ -313,7 +299,6 @@ export function AccountSettings() {
                 return;
             }
 
-            console.log('Calling Supabase auth.updateUser...');
             const { data, error } = await supabase.auth.updateUser({
                 password: passwordData.new
             });
@@ -323,7 +308,6 @@ export function AccountSettings() {
                 setIsUpdatingPassword(false);
                 alert(`Erreur de mise à jour: ${error.message}`);
             } else {
-                console.log('Supabase password update success:', data);
                 setShowConfirmPassword(false);
             }
         } catch (err: any) {
@@ -331,7 +315,6 @@ export function AccountSettings() {
             setIsUpdatingPassword(false);
             alert(`Erreur inattendue: ${err.message || 'Échec de la mise à jour'}`);
         } finally {
-            console.log('=== PASSWORD UPDATE COMPLETE ===');
             clearTimeout(updateTimeout);
             setIsUpdatingPassword(false);
         }
@@ -339,7 +322,6 @@ export function AccountSettings() {
 
     const handleDataExport = () => {
         try {
-            console.log('=== DATA EXPORT STARTED ===');
             const exportData = {
                 user: {
                     id: currentUser?.id,
@@ -376,7 +358,6 @@ export function AccountSettings() {
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
 
-            console.log('Data export successful:', fileName);
         } catch (error) {
             console.error('Error exporting data:', error);
             alert("Une erreur est survenue lors de l'exportation de vos données.");

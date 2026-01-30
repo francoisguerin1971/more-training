@@ -459,7 +459,6 @@ export function EliteTrainingReport({ data, onBack, onExport, onApplyPlan }: Eli
                     totalWeeks={reportData.planSummary.totalWeeks}
                     onExport={(scope, format) => {
                         // In a real app, this would trigger backend logic or PDF generation
-                        console.log('Exporting plan:', scope, format);
                         if (onApplyPlan) onApplyPlan();
                         alert(`Plan exporté (${scope} / ${format}) avec succès !`);
                         setShowExportModal(false);

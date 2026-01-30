@@ -196,7 +196,6 @@ export function CoachMarketplace({ onSelectCoach: onSelectCoachProp, onBackToLan
                     coach={selectedCoach}
                     onClose={() => setSelectedCoach(null)}
                     onSelectOffering={(offering) => {
-                        console.log('Selected offering:', offering);
                         // Future: Navigate to checkout / Stripe or Message
                     }}
                 />

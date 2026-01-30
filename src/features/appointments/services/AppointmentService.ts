@@ -143,17 +143,14 @@ export class AppointmentService {
         if (data && !error) {
             // Simulate triggering notifications base on coach settings
             if (settings?.confirmation_email) {
-                console.log(`[Notification] Sending confirmation EMAIL to ${appointment.client_email || 'athlete'}`);
                 // await EmailService.send(...)
             }
             if (settings?.confirmation_sms && (appointment.client_phone)) {
-                console.log(`[Notification] Sending confirmation SMS to ${appointment.client_phone}`);
                 // await SMSService.send(...)
             }
 
             // Trigger billing logic if needed
             if (appointment.billing_status === 'paid') {
-                console.log(`[Billing] Generating invoice for ${appointment.amount_cents} cents`);
                 // await BillingService.charge(...)
             }
         }
@@ -178,7 +175,6 @@ export class AppointmentService {
             .single();
 
         if (data && !error) {
-            console.log(`[Notification] Sending CANCELLATION notice to all parties. Cancelled by: ${cancelledBy}`);
         }
 
         return { data, error };
